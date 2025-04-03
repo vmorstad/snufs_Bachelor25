@@ -1,26 +1,22 @@
 from scapy.all import ARP, Ether, srp, conf
 import subprocess
 
-# We start with a function to scan devices in a network range using ARP requests
-# We use Scapy to send ARP requests and receive responses from devices in the network
-# We use ARP requests to find devices on the local network
+# Set the default interface for Scapy
 def scan_network(network_range):
     arp = ARP(pdst=network_range)
     ether = Ether(dst="ff:ff:ff:ff:ff:ff")
     packet = ether / arp
 
-    result = srp(packet, verbose=True)[0]
+    result = srp(packet, timeout=5, verbose=True)[0]
 
-    # We set the devices we find in a list from the result that came from the scan
-    # The result is a list of tuples (sent, received)
     devices = []
     for sent, received in result:
         devices.append({'ip': received.psrc, 'mac': received.hwsrc})
     
     return devices
 
-    # We use Nmap to detect the operating system of the devices we found
-    # We run Nmap with the -O flag to enable OS detection
+# Run Nmap to detect OS
+# This function requires Nmap to be installed and available in the system PATH
 def detect_os(ip_address):
     try:
         # Run Nmap with OS detection (-O flag)
