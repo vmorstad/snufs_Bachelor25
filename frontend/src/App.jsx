@@ -1,7 +1,5 @@
-import "./App.css";
-import React, { useState, useEffect } from "react";
-import DeviceList from './components/Devices';
-
+import React from "react";
+import DeviceList from "./components/Devices";
 
 function App() {
   return (
