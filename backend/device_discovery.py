@@ -41,19 +41,14 @@ def get_device_name(ip_address):
         return "Unknown device name"
 
 if __name__ == "__main__":
+    # Standalone test
     network_range = "192.168.0.0/24"
     print("Scanning network for devices...")
     devices = scan_network(network_range)
     if devices:
-        print("\nDiscovered devices:")
         for device in devices:
-            print(f"IP: {device['ip']} \t MAC: {device['mac']}")
-        print("\nRunning OS detection on discovered devices:")
-        for device in devices:
-            ip = device['ip']
-            print(f"\nOS detection for {ip}:")
-            os_info = detect_os(ip)
-            print(os_info)
+            print(f"IP: {device['ip']}\tMAC: {device['mac']}")
+            print("OS:", detect_os(device['ip']))
     else:
-        print("No devices discovered. Check your network settings, firewall, or interface.")
+        print("No devices discovered.")
     print("Scan complete.")

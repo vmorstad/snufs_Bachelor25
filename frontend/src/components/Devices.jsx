@@ -51,8 +51,22 @@ export default function DeviceList() {
       ) : devices.length > 0 ? (
         <ul>
           {devices.map((device, idx) => (
-            <li key={idx}>
-              <strong>IP:</strong> {device.ip} | <strong>Device Name:</strong> {device.name} | <strong>OS Info:</strong> {device.os}
+            <li key={idx} style={{ marginBottom: "1rem" }}>
+              <div>
+                <strong>IP:</strong> {device.ip} |{" "}
+                <strong>Device Name:</strong> {device.name} |{" "}
+                <strong>OS Info:</strong> {device.os}
+              </div>
+              {device.ports && device.ports.length > 0 && (
+                <div>
+                  <strong>Open Ports:</strong>
+                  <ul>
+                    {device.ports.map((portLine, pIdx) => (
+                      <li key={pIdx}>{portLine}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </li>
           ))}
         </ul>
