@@ -40,15 +40,36 @@ def get_device_name(ip_address):
     except socket.herror:
         return "Unknown device name"
 
+def scan_ports(ip_address):
+    """
+    Uses Nmap to perform a port scan with service/version detection (-sV).
+    Returns a list of open port lines containing the port number and service info.
+    """
+    try:
+        nmap_output = subprocess.check_output(["nmap", "-sV", ip_address], universal_newlines=True)
+        open_ports = []
+        for line in nmap_output.splitlines():
+            if "/tcp" in line and "open" in line:
+                open_ports.append(line.strip())
+        return open_ports
+    except subprocess.CalledProcessError as e:
+        return [f"Error scanning ports on {ip_address}: {e}"]
+
 if __name__ == "__main__":
-    # Standalone test
+    # For standalone testing
     network_range = "192.168.0.0/24"
     print("Scanning network for devices...")
     devices = scan_network(network_range)
     if devices:
+        print("\nDiscovered devices:")
         for device in devices:
             print(f"IP: {device['ip']}\tMAC: {device['mac']}")
-            print("OS:", detect_os(device['ip']))
+        print("\nRunning OS and Port detection on discovered devices:")
+        for device in devices:
+            ip = device['ip']
+            print(f"\nResults for {ip}:")
+            print("OS Info:", detect_os(ip))
+            print("Port Scan:", scan_ports(ip))
     else:
-        print("No devices discovered.")
+        print("No devices discovered. Check your network settings, firewall, or interface.")
     print("Scan complete.")

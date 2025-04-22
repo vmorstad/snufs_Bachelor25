@@ -1,8 +1,7 @@
 import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
-from device_discovery import detect_os, get_device_name
-from port_scan import scan_ports
+from device_discovery import detect_os, get_device_name, scan_ports
 
 class MyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -17,7 +16,7 @@ class MyHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"error": "No authorized IPs provided"}).encode("utf-8"))
                 return
-
+            
             ips = [ip.strip() for ip in auth_ips.split(",") if ip.strip()]
             devices = []
             for ip in ips:
@@ -25,13 +24,13 @@ class MyHandler(BaseHTTPRequestHandler):
                 name = get_device_name(ip)
                 ports = scan_ports(ip)
                 devices.append({"ip": ip, "name": name, "os": os_info, "ports": ports})
-
+            
             self.send_response(200)
             self.send_header("Content-type", "application/json")
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             self.wfile.write(json.dumps(devices).encode("utf-8"))
-
+        
         elif parsed_path.path == "/device":
             query = parse_qs(parsed_path.query)
             ip = query.get("ip", [None])[0]
@@ -48,7 +47,7 @@ class MyHandler(BaseHTTPRequestHandler):
                 "name": name,
                 "os": os_info,
                 "ports": ports,
-                "vulnerabilities": {"results": []}  # Placeholder for vulnerability data
+                "vulnerabilities": {"results": []}  # Placeholder
             }
             self.send_response(200)
             self.send_header("Content-type", "application/json")
