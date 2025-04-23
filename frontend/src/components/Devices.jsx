@@ -1,4 +1,3 @@
-// frontend/src/components/Devices.jsx
 import React, { useState } from "react";
 
 export default function DeviceList() {
