@@ -1,22 +1,30 @@
-# backend/port_scan.py
-
+import re
 import subprocess
 
-def scan_ports(ip_address):
+def scan_ports(ip):
     """
-    Use Nmap with service/version detection (-sV) to scan ports on the given IP.
-    Returns a list of strings describing open ports.
+    Nmap -sV → parse lines like "80/tcp open http Apache/2.4.41 Ubuntu/18.04"
+    into: { port: "80/tcp", service: "http", version: "Apache/2.4.41 Ubuntu/18.04" }
     """
     try:
-        nmap_output = subprocess.check_output(
-            ["nmap", "-sV", ip_address],
-            universal_newlines=True
+        out = subprocess.check_output(
+            ["nmap", "-sV", ip],
+            text=True,
+            stderr=subprocess.DEVNULL
         )
-        open_ports = [
-            line.strip()
-            for line in nmap_output.splitlines()
-            if "/tcp" in line and "open" in line
-        ]
-        return open_ports
     except subprocess.CalledProcessError as e:
-        return [f"Error scanning ports on {ip_address}: {e}"]
+        return [{"port": "", "service": "", "version": f"Error: {e}"}]
+
+    ports = []
+    for line in out.splitlines():
+        # match lines: "<port>/tcp open <service> <rest...>"
+        m = re.match(r"^(\d+/tcp)\s+open\s+(\S+)\s+(.+)$", line)
+        if m:
+            port, svc, rest = m.groups()
+            version = rest.strip()   # ← keep the full remainder as version
+            ports.append({
+                "port":    port,
+                "service": svc,
+                "version": version
+            })
+    return ports
