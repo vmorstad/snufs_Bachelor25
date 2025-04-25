@@ -85,19 +85,19 @@ export default function DeviceList() {
     );
   };
 
-  const getSeverityColor = (severity) => {
-    switch (severity?.toUpperCase()) {
-      case 'CRITICAL': return '#cc0000';
-      case 'HIGH': return '#ff4444';
-      case 'MEDIUM': return '#ffaa00';
-      case 'LOW': return '#ffcc00';
-      default: return '#666666';
-    }
+  const getSeverityColor = (cvss) => {
+    if (!cvss || cvss === 'N/A') return '#666666';
+    const score = parseFloat(cvss);
+    if (score >= 9.0) return '#cc0000';  // Critical - Dark Red
+    if (score >= 7.0) return '#ff4444';  // High - Red
+    if (score >= 4.0) return '#ff8800';  // Medium - Orange
+    if (score >= 0.1) return '#ffcc00';  // Low - Yellow
+    return '#666666';                    // None/Unknown - Gray
   };
 
-  const getCvssLabel = (score) => {
-    if (score === null || score === undefined) return 'N/A';
-    score = parseFloat(score);
+  const getSeverityLabel = (cvss) => {
+    if (!cvss || cvss === 'N/A') return 'Unknown';
+    const score = parseFloat(cvss);
     if (score >= 9.0) return 'Critical';
     if (score >= 7.0) return 'High';
     if (score >= 4.0) return 'Medium';
@@ -105,8 +105,72 @@ export default function DeviceList() {
     return 'None';
   };
 
+  const renderVulnerability = (vuln) => {
+    const cvss = vuln.cvss || 'N/A';
+    const severity = vuln.severity || getSeverityLabel(cvss);
+    
+    return (
+      <div style={{ 
+        border: '1px solid #eee',
+        borderRadius: '4px',
+        padding: '12px',
+        marginBottom: '8px'
+      }}>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '12px',
+          marginBottom: '8px' 
+        }}>
+          <code style={{ 
+            fontSize: '1.1em',
+            color: '#333'
+          }}>{vuln.id}</code>
+          <span style={{
+            backgroundColor: getSeverityColor(cvss),
+            color: 'white',
+            padding: '3px 8px',
+            borderRadius: '3px',
+            fontSize: '0.9em',
+            fontWeight: 'bold'
+          }}>
+            {severity}
+          </span>
+          <span style={{ 
+            backgroundColor: '#f8f8f8',
+            padding: '3px 8px',
+            borderRadius: '3px',
+            fontSize: '0.9em'
+          }}>
+            CVSS: {typeof cvss === 'number' ? cvss.toFixed(1) : cvss}
+          </span>
+        </div>
+        <div style={{ 
+          fontSize: '0.95em',
+          lineHeight: '1.4',
+          color: '#444'
+        }}>
+          {vuln.summary || 'No description available.'}
+        </div>
+        {vuln.vector && (
+          <div style={{ 
+            marginTop: '8px',
+            fontSize: '0.85em',
+            fontFamily: 'monospace',
+            color: '#666',
+            backgroundColor: '#f8f8f8',
+            padding: '4px 8px',
+            borderRadius: '3px'
+          }}>
+            {vuln.vector}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div style={{ padding: 20 }}>
+    <div style={{ padding: 20, maxWidth: 1200, margin: '0 auto' }}>
       <h2>Devices in the Network</h2>
 
       <div style={{ marginBottom: 12 }}>
@@ -128,80 +192,120 @@ export default function DeviceList() {
           <div
             key={d.ip || idx}
             style={{
-              border: "1px solid #ccc",
-              padding: 12,
-              marginBottom: 12,
-              borderRadius: 4,
+              border: '1px solid #ddd',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '20px',
+              backgroundColor: 'white',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
             }}
           >
-            <p>
-              <strong>IP:</strong> {d.ip} — <strong>Name:</strong> {d.name}
-            </p>
-            <p>
-              <strong>OS:</strong> {d.os.name} 
-              {d.os.version && ` (Version: ${d.os.version})`}
-              {d.os.confidence && ` - Confidence: ${d.os.confidence}`}
-            </p>
-            <p>
-              <strong>Open Ports:</strong>
-            </p>
-            <ul>
-              {Array.isArray(d.ports) &&
-                d.ports.map((p, j) => (
-                  <li key={j}>
-                    {p.port} <em>{p.service}</em> {p.version}
-                  </li>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '12px'
+            }}>
+              <div>
+                <h3 style={{ margin: 0 }}>{d.ip}</h3>
+                <div style={{ color: '#666' }}>{d.name}</div>
+              </div>
+              <div style={{ 
+                backgroundColor: '#f8f8f8',
+                padding: '8px 12px',
+                borderRadius: '4px',
+                fontSize: '0.9em'
+              }}>
+                <strong>OS:</strong> {d.os.name}
+                {d.os.version && ` (${d.os.version})`}
+                {d.os.confidence && 
+                  <span style={{ 
+                    color: '#666',
+                    fontSize: '0.9em'
+                  }}> - {d.os.confidence} confidence</span>
+                }
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <h4 style={{ marginBottom: '8px' }}>Open Ports</h4>
+              <div style={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                gap: '8px' 
+              }}>
+                {Array.isArray(d.ports) && d.ports.map((p, j) => (
+                  <div
+                    key={j}
+                    style={{
+                      backgroundColor: '#f8f8f8',
+                      padding: '6px 10px',
+                      borderRadius: '4px',
+                      fontSize: '0.9em'
+                    }}
+                  >
+                    <strong>{p.port}</strong>
+                    {p.service && <em style={{ marginLeft: '6px' }}>{p.service}</em>}
+                    {p.version && <span style={{ color: '#666' }}> ({p.version})</span>}
+                  </div>
                 ))}
-            </ul>
-            <p>
-              <strong>Vulnerabilities</strong>
-            </p>
-            <ul style={{ listStyle: 'none', padding: 0 }}>
+              </div>
+            </div>
+
+            <div>
+              <h4 style={{ 
+                marginBottom: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                Vulnerabilities
+                {Array.isArray(d.vulns) && d.vulns.length > 0 && (
+                  <span style={{
+                    backgroundColor: '#ff4444',
+                    color: 'white',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    fontSize: '0.8em'
+                  }}>
+                    {d.vulns.length}
+                  </span>
+                )}
+              </h4>
               {Array.isArray(d.vulns) && d.vulns.length > 0 ? (
                 d.vulns.map((v, j) => (
-                  <li key={j} style={{ 
-                    marginBottom: '10px',
-                    padding: '10px',
-                    border: '1px solid #eee',
-                    borderRadius: '4px'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '5px' }}>
-                      <code style={{ marginRight: '10px' }}>{v.id}</code>
-                      <span style={{
-                        backgroundColor: getSeverityColor(v.severity),
-                        color: 'white',
-                        padding: '2px 6px',
-                        borderRadius: '3px',
-                        fontSize: '0.9em',
-                        marginRight: '10px'
-                      }}>
-                        {v.severity || getCvssLabel(v.cvss)}
-                      </span>
-                      <span style={{ color: '#666' }}>
-                        CVSS: {v.cvss != null ? v.cvss.toFixed(1) : 'N/A'}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '0.9em', color: '#333' }}>{v.summary}</div>
-                    {v.vector && (
-                      <div style={{ 
-                        fontSize: '0.8em',
-                        color: '#666',
-                        fontFamily: 'monospace',
-                        marginTop: '5px'
-                      }}>
-                        Vector: {v.vector}
-                      </div>
-                    )}
-                  </li>
+                  <div key={j}>
+                    {renderVulnerability(v)}
+                  </div>
                 ))
               ) : (
-                <li>No vulnerabilities found. This could mean the device is secure, or its software version wasn't recognized.</li>
+                <div style={{ 
+                  padding: '12px',
+                  backgroundColor: '#f8f8f8',
+                  borderRadius: '4px',
+                  color: '#666',
+                  fontSize: '0.9em'
+                }}>
+                  No vulnerabilities found. This could mean the device is secure, 
+                  or its software version wasn't recognized.
+                </div>
               )}
-            </ul>
+            </div>
           </div>
         ))
       ) : (
-        !loading && <p>No devices found. Make sure to enter valid IP addresses and try again.</p>
+        !loading && (
+          <div style={{
+            padding: '20px',
+            textAlign: 'center',
+            color: '#666',
+            backgroundColor: '#f8f8f8',
+            borderRadius: '8px',
+            marginTop: '20px'
+          }}>
+            No devices found. Make sure to enter valid IP addresses and try again.
+          </div>
+        )
       )}
     </div>
   );

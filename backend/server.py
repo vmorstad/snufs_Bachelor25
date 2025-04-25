@@ -12,23 +12,114 @@ import time
 
 # Enhanced service to CPE mapping
 SERVICE_TO_CPE = {
+    # Web servers
+    "http": "cpe:2.3:a:apache:http_server",
+    "apache": "cpe:2.3:a:apache:http_server",
+    "nginx": "cpe:2.3:a:nginx:nginx",
+    "apache httpd": "cpe:2.3:a:apache:http_server",
+    
+    # Databases
     "mysql": "cpe:2.3:a:mysql:mysql",
     "mariadb": "cpe:2.3:a:mariadb:mariadb",
-    "http": "cpe:2.3:a:apache:http_server",
-    "nginx": "cpe:2.3:a:nginx:nginx",
-    "ssh": "cpe:2.3:a:openssh:openssh",
-    "ftp": "cpe:2.3:a:vsftpd:vsftpd",
-    "smb": "cpe:2.3:a:samba:samba",
-    "rdp": "cpe:2.3:a:microsoft:remote_desktop_protocol",
     "postgresql": "cpe:2.3:a:postgresql:postgresql",
-    "node.js": "cpe:2.3:a:nodejs:node.js",
-    "redis": "cpe:2.3:a:redis:redis",
     "mongodb": "cpe:2.3:a:mongodb:mongodb",
+    "redis": "cpe:2.3:a:redis:redis",
+    
+    # Remote access
+    "ssh": "cpe:2.3:a:openssh:openssh",
+    "openssh": "cpe:2.3:a:openssh:openssh",
+    "rdp": "cpe:2.3:a:microsoft:remote_desktop_services",
+    "telnet": "cpe:2.3:a:telnet:telnet",
+    
+    # File sharing
+    "smb": "cpe:2.3:a:samba:samba",
+    "samba": "cpe:2.3:a:samba:samba",
+    "ftp": "cpe:2.3:a:vsftpd:vsftpd",
+    
+    # Other services
+    "node.js": "cpe:2.3:a:nodejs:node.js",
+    "nodejs": "cpe:2.3:a:nodejs:node.js",
+    "docker": "cpe:2.3:a:docker:docker",
+    "kubernetes": "cpe:2.3:a:kubernetes:kubernetes",
+}
+
+# OS CPE mapping
+OS_TO_CPE = {
+    "windows": {
+        "base": "cpe:2.3:o:microsoft:windows",
+        "versions": {
+            "10": "10",
+            "11": "11",
+            "server": "server",
+            "2019": "server_2019",
+            "2016": "server_2016",
+        }
+    },
+    "linux": {
+        "base": "cpe:2.3:o:linux:linux_kernel",
+        "distros": {
+            "ubuntu": "cpe:2.3:o:canonical:ubuntu_linux",
+            "debian": "cpe:2.3:o:debian:debian_linux",
+            "centos": "cpe:2.3:o:centos:centos",
+            "fedora": "cpe:2.3:o:fedoraproject:fedora",
+            "red hat": "cpe:2.3:o:redhat:enterprise_linux"
+        }
+    }
 }
 
 # Store scan progress
 scan_progress = {}
 scan_results = {}
+
+def get_os_cpe(os_info):
+    """Extract appropriate CPE for OS information."""
+    os_name = os_info["name"].lower()
+    version = os_info.get("version", "").lower()
+    terms = []
+    
+    # Windows detection
+    if "windows" in os_name:
+        base = OS_TO_CPE["windows"]["base"]
+        # Try to match version
+        for key, ver in OS_TO_CPE["windows"]["versions"].items():
+            if key in os_name or key in version:
+                terms.append(f"{base}:{ver}")
+                break
+        else:
+            terms.append(base)
+            
+    # Linux detection
+    elif any(x in os_name for x in ["linux", "ubuntu", "debian", "centos", "fedora", "red hat"]):
+        # Try specific distro first
+        for distro, cpe in OS_TO_CPE["linux"]["distros"].items():
+            if distro in os_name:
+                if version:
+                    terms.append(f"{cpe}:{version}")
+                terms.append(cpe)
+                break
+        # Add generic Linux kernel CPE as fallback
+        terms.append(OS_TO_CPE["linux"]["base"])
+        
+    return terms
+
+def extract_version(service_info):
+    """Enhanced version extraction from service information."""
+    version = service_info.get("version", "").lower()
+    if not version:
+        return ""
+        
+    # Try different version patterns
+    patterns = [
+        r"(\d+\.\d+\.\d+)",  # matches x.y.z
+        r"(\d+\.\d+)",       # matches x.y
+        r"v?(\d+)"          # matches vX or just X
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, version)
+        if match:
+            return match.group(1)
+    return ""
 
 def scan_device(ip):
     """Scan a single device and return its information."""
@@ -50,81 +141,93 @@ def scan_device(ip):
         # Build CPE terms
         terms = []
         
-        # Add OS CPE based on enhanced OS detection
+        # Add OS CPEs
         if os_info["name"] != "Unknown OS":
-            os_name = os_info["name"].lower()
-            if "windows" in os_name:
-                base_cpe = "cpe:2.3:o:microsoft:windows"
-                if os_info["version"]:
-                    terms.append(f"{base_cpe}:{os_info['version']}")
-                else:
-                    terms.append(base_cpe)
-            elif any(x in os_name for x in ["linux", "ubuntu", "debian", "centos", "fedora"]):
-                for distro in ["ubuntu", "debian", "centos", "fedora"]:
-                    if distro in os_name:
-                        base_cpe = f"cpe:2.3:o:{distro}:{distro}"
-                        if os_info["version"]:
-                            terms.append(f"{base_cpe}:{os_info['version']}")
-                        else:
-                            terms.append(base_cpe)
-                        break
-                else:
-                    terms.append("cpe:2.3:o:linux:linux_kernel")
-
-        # Add service CPEs with improved mapping
+            terms.extend(get_os_cpe(os_info))
+        
+        # Add service CPEs
         for svc in ports:
             service = svc.get("service", "").lower()
-            version = svc.get("version", "")
+            version = extract_version(svc)
             
             # Try exact service match first
             if service in SERVICE_TO_CPE:
                 base_cpe = SERVICE_TO_CPE[service]
-                version_match = re.search(r"\b\d+(?:\.\d+)+\b", version)
-                if version_match:
-                    terms.append(f"{base_cpe}:{version_match.group(0)}")
-                else:
-                    terms.append(base_cpe)
+                if version:
+                    terms.append(f"{base_cpe}:{version}")
+                terms.append(base_cpe)
             
             # Try partial matches
             else:
                 for key, cpe in SERVICE_TO_CPE.items():
                     if key in service or service in key:
-                        version_match = re.search(r"\b\d+(?:\.\d+)+\b", version)
-                        if version_match:
-                            terms.append(f"{cpe}:{version_match.group(0)}")
-                        else:
-                            terms.append(cpe)
+                        if version:
+                            terms.append(f"{cpe}:{version}")
+                        terms.append(cpe)
                         break
         
         scan_progress[ip] = {"status": "fetching_vulnerabilities", "progress": 80}
         
-        # Query vulnerabilities with rate limiting
+        # Query vulnerabilities with improved rate limiting and retries
         all_vulns = []
         for term in terms:
-            time.sleep(1)  # Rate limit NVD API
-            try:
-                vulns = get_top_vulns(term, max_results=5)
-                all_vulns.extend(vulns)
-            except Exception as e:
-                print(f"[ERROR] Failed to get vulnerabilities for {term}: {e}")
+            max_retries = 3
+            retry_delay = 2  # seconds
+            
+            for attempt in range(max_retries):
+                try:
+                    time.sleep(retry_delay)  # Rate limit
+                    vulns = get_top_vulns(term, max_results=5)
+                    if vulns:  # Only add if we got results
+                        # Ensure each vulnerability has required fields
+                        for v in vulns:
+                            if v.get('description') and v.get('cvss'):
+                                all_vulns.append(v)
+                    break  # Success, exit retry loop
+                except Exception as e:
+                    if attempt == max_retries - 1:  # Last attempt
+                        print(f"[ERROR] Failed to get vulnerabilities for {term} after {max_retries} attempts: {e}")
+                    else:
+                        time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
         
         # Deduplicate and sort vulnerabilities
         seen = set()
         unique_vulns = []
-        for v in sorted(all_vulns, key=lambda x: x.get("cvss") or 0, reverse=True):
-            if v["id"] not in seen:
+        for v in sorted(all_vulns, key=lambda x: float(x.get('cvss') or 0), reverse=True):
+            if v["id"] not in seen and v.get("description"):  # Only include vulns with descriptions
                 seen.add(v["id"])
-                unique_vulns.append(v)
+                # Ensure consistent format
+                unique_vulns.append({
+                    'id': v['id'],
+                    'description': v['description'],
+                    'cvss': v.get('cvss', 'N/A'),
+                    'severity': v.get('severity', 'Unknown'),
+                    'vector': v.get('vector', ''),
+                    'published': v.get('published', 'Unknown'),
+                    'lastModified': v.get('lastModified', 'Unknown'),
+                    'references': v.get('references', [])
+                })
         
         scan_progress[ip] = {"status": "completed", "progress": 100}
         
-        return {
+        result = {
             "ip": ip,
             "name": name,
             "os": os_info,
             "ports": ports,
-            "vulns": unique_vulns[:5]
+            "vulns": unique_vulns[:5],
+            "cpe_terms": terms  # Include CPE terms for debugging
         }
+        
+        # Log successful detection
+        if unique_vulns:
+            print(f"[INFO] Found {len(unique_vulns)} vulnerabilities for {ip} using {len(terms)} CPE terms")
+            for v in unique_vulns[:3]:  # Log first 3 for debugging
+                print(f"[INFO] {v['id']} - CVSS: {v['cvss']} - {v['severity']}")
+        else:
+            print(f"[WARNING] No vulnerabilities found for {ip} using CPE terms: {terms}")
+            
+        return result
         
     except Exception as e:
         print(f"[ERROR] Scan failed for {ip}: {e}")
