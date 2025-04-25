@@ -1,5 +1,6 @@
 .App {
   text-align: center;
+  min-height: 100vh;
 }
 
 .App-logo {
@@ -42,6 +43,8 @@
   display: flex;
   min-height: 100vh;
   background-color: #f5f5f5;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 /* Sidebar */
@@ -82,6 +85,8 @@
 .main-content {
   flex: 1;
   padding: 2rem;
+  overflow-y: auto; /* Allow vertical scrolling if needed */
+  max-width: calc(100vw - 250px);
 }
 
 .top-bar {
@@ -141,33 +146,41 @@
 .device-card {
   background: white;
   border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 20px;
+  padding: 15px;
+  margin-bottom: 0;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
   cursor: pointer;
+  min-height: 60px;
+  flex-shrink: 0;
+  border: 1px solid #e0e0e0;
+  margin: 4px;
 }
 
 .device-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  border-color: #d0d0d0;
 }
 
 .device-card h3 {
   color: #1a73e8;
   margin: 0;
-  font-size: 1.2em;
+  font-size: 1.1em;
+  line-height: 1.4;
 }
 
 .device-card.expanded {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border-color: #c0c0c0;
 }
 
 .device-card .device-content {
-  margin-top: 15px;
-  padding-top: 15px;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top: 1px solid #eee;
   animation: fadeIn 0.3s ease;
+  background: white;
 }
 
 .device-card.empty {
@@ -217,17 +230,23 @@
 .content-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-  padding: 0 1rem;
+  gap: 3rem;
+  padding: 0 1rem 1rem;
+  min-height: fit-content;
+  overflow: visible;
+  align-items: stretch;
+  max-width: 100%;
 }
 
 /* Devices List */
 .devices-list {
-  grid-column: 1;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0;
   animation: fadeIn 0.3s ease-in-out;
+  overflow-y: scroll;
+  padding: 4px;
 }
 
 @keyframes fadeIn {
@@ -241,44 +260,73 @@
   }
 }
 
-.more-button {
-  align-self: flex-end;
-  padding: 0.5rem 1rem;
-  background-color: transparent;
-  border: none;
-  color: #1a73e8;
-  cursor: pointer;
-  margin-top: 1rem;
-  font-weight: 500;
-  transition: opacity 0.2s;
+/* Custom scrollbar styling */
+.devices-list::-webkit-scrollbar {
+  width: 8px;
+  background-color: #f5f5f5;
 }
 
-.more-button:hover {
-  opacity: 0.8;
+.devices-list::-webkit-scrollbar-track {
+  background-color: #f5f5f5;
+  border-radius: 4px;
+}
+
+.devices-list::-webkit-scrollbar-thumb {
+  background-color: #c1c1c1;
+  border-radius: 4px;
+}
+
+.devices-list::-webkit-scrollbar-thumb:hover {
+  background-color: #a1a1a1;
+}
+
+/* Remove the more button since we now have scroll */
+.more-button {
+  display: none;
 }
 
 /* Anomalies Section */
 .anomalies-section {
   background-color: white;
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   grid-column: 2;
+  height: 500px;
+}
+
+.anomalies-section h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
 }
 
 /* Graph Section */
 .graph-section {
   grid-column: 1 / -1;
   background-color: white;
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  height: 300px;
+  margin: 0 auto;
+  margin-bottom: 1.5rem;
+  width: 95%;
+  position: relative;
 }
 
 .graph-container {
   width: 100%;
-  height: 300px;
+  height: 100%;
   position: relative;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.graph-container canvas {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
 }
 
 .graph-label {
@@ -338,4 +386,17 @@
 .devices-page .search-section {
   max-width: none;
   margin-top: 1rem;
+}
+
+/* Devices Section */
+.devices-section {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  height: 500px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
 }

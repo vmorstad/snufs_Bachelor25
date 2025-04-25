@@ -41,8 +41,8 @@ const Home = () => {
       );
     }
 
-    // Show found devices (up to 5)
-    return searchResults.slice(0, 5).map((device, index) => (
+    // Show all found devices in the scrollable container
+    return searchResults.map((device, index) => (
       <div 
         key={index} 
         className={`device-card ${expandedDeviceIndex === index ? 'expanded' : ''}`}
@@ -104,7 +104,6 @@ const Home = () => {
           <div className="devices-section">
             <div className="devices-list">
               {renderDeviceCards()}
-              {searchResults.length > 0 && <button className="more-button">More</button>}
             </div>
           </div>
           
