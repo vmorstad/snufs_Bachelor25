@@ -1,102 +1,95 @@
-import React, { useState } from "react";
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useDevices } from '../context/DeviceContext';
 
-export default function DeviceList() {
-  const [ips, setIps]       = useState("");
-  const [devices, setDevices] = useState([]);  // always an array
-  const [loading, setLoading] = useState(false);
+const Devices = () => {
+  const navigate = useNavigate();
+  const {
+    searchInput,
+    setSearchInput,
+    searchResults,
+    isLoading,
+    handleSearch
+  } = useDevices();
 
-  const scan = async () => {
-    if (!ips.trim()) {
-      return alert("Enter one or more IP addresses first");
-    }
-    setLoading(true);
-
-    try {
-      const res  = await fetch(
-        `http://localhost:8000/scan?auth_ips=${encodeURIComponent(ips)}`
-      );
-      const data = await res.json();
-      console.log("Backend returned:", data);
-
-      // Normalize into an array:
-      let list = [];
-      if (Array.isArray(data)) {
-        list = data;
-      } else if (Array.isArray(data.devices)) {
-        list = data.devices;
-      } else {
-        console.warn("Unexpected scan result shape, setting to []");
-      }
-      setDevices(list);
-    } catch (err) {
-      console.error("Fetch error", err);
-      setDevices([]);
-    } finally {
-      setLoading(false);
-    }
+  const renderDeviceInfo = (device) => {
+    return (
+      <div>
+        <div><strong>Name:</strong> {device.name}</div>
+        <div><strong>OS:</strong> {device.os}</div>
+        <div><strong>Open Ports:</strong></div>
+        <ul>
+          {device.ports?.map((port, idx) => (
+            <li key={idx}>{port}</li>
+          ))}
+        </ul>
+      </div>
+    );
   };
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Devices in the Network</h2>
-
-      <div style={{ marginBottom: 12 }}>
-        <input
-          style={{ width: 300, marginRight: 8 }}
-          placeholder="e.g. 192.168.1.10,192.168.1.11"
-          value={ips}
-          onChange={(e) => setIps(e.target.value)}
-        />
-        <button onClick={scan}>Scan Network</button>
-      </div>
-
-      {loading && <p>Scanning… please wait.</p>}
-
-      {/* Only map if devices is an array with items */}
-      {!loading && Array.isArray(devices) && devices.length > 0 ? (
-        devices.map((d, idx) => (
-          <div
-            key={idx}
-            style={{
-              border: "1px solid #ccc",
-              padding: 12,
-              marginBottom: 12,
-              borderRadius: 4,
-            }}
-          >
-            <p>
-              <strong>IP:</strong> {d.ip} — <strong>Name:</strong> {d.name}
-            </p>
-            <p>
-              <strong>OS:</strong> {d.os}
-            </p>
-            <p>
-              <strong>Open Ports:</strong>
-            </p>
-            <ul>
-              {Array.isArray(d.ports) &&
-                d.ports.map((p, j) => (
-                  <li key={j}>
-                    {p.port} <em>{p.service}</em> {p.version}
-                  </li>
-                ))}
-            </ul>
-            <p>
-              <strong>Top CVEs:</strong>
-            </p>
-            <ul>
-              {Array.isArray(d.vulns) &&
-                d.vulns.map((v, j) => (
-                  <li key={j}>
-                    <code>{v.id}</code> (CVSS {v.cvss}) — {v.summary}
-                  </li>
-                ))}
-            </ul>
+    <div className="layout">
+      <nav className="sidebar">
+        <div className="nav-items">
+          <div className="nav-item" onClick={() => navigate('/')}>
+            <i className="icon home-icon"></i>
+            <span>Home</span>
           </div>
-        ))
-      ) : (
-        !loading && <p>No devices found.</p>
-      )}
+          <div className="nav-item active" onClick={() => navigate('/devices')}>
+            <i className="icon devices-icon"></i>
+            <span>Devices</span>
+          </div>
+          <div className="nav-item" onClick={() => navigate('/settings')}>
+            <i className="icon settings-icon"></i>
+            <span>Setting</span>
+          </div>
+        </div>
+      </nav>
+      
+      <main className="main-content">
+        <div className="top-bar">
+          <div className="help-section">
+            <span>Help</span>
+            <i className="icon notification-icon"></i>
+          </div>
+        </div>
+        
+        <div className="devices-page">
+          <div className="search-section">
+            <div className="search-bar">
+              <input
+                type="text"
+                placeholder="Enter IP addresses (e.g., 192.168.0.110,192.168.0.220)"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              />
+              <button onClick={handleSearch} disabled={isLoading}>
+                {isLoading ? 'Scanning...' : 'Scan Network'}
+              </button>
+            </div>
+          </div>
+
+          {searchResults.length > 0 ? (
+            <div className="devices-grid">
+              {searchResults.map((device, index) => (
+                <div key={index} className="device-card">
+                  <h3>{device.ip} - {device.name || 'Unknown device'}</h3>
+                  <div className="device-content">
+                    {renderDeviceInfo(device)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="no-devices">
+              <p>No devices found. Use the search bar above to scan for devices.</p>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
-}
+};
+
+export default Devices;
