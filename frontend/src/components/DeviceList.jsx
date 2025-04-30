@@ -6,6 +6,10 @@ const DeviceList = () => {
   const { searchResults, selectedDevice, handleDeviceSelect } = useDevices();
 
   const renderDeviceInfo = (device) => {
+    if (selectedDevice?.ip !== device.ip) {
+      // Only show IP and name if not selected
+      return null;
+    }
     return (
       <div>
         <div><strong>Name:</strong> {device.name}</div>
@@ -27,13 +31,15 @@ const DeviceList = () => {
           searchResults.map((device, index) => (
             <div 
               key={index} 
-              className={`device-card ${selectedDevice?.ip === device.ip ? 'selected' : ''}`}
+              className={`device-card${selectedDevice?.ip === device.ip ? ' selected' : ''}`}
               onClick={() => handleDeviceSelect(device)}
             >
               <h3>{device.ip} - {device.name || 'Unknown device'}</h3>
-              <div className="device-content">
-                {renderDeviceInfo(device)}
-              </div>
+              {selectedDevice?.ip === device.ip && (
+                <div className="device-content">
+                  {renderDeviceInfo(device)}
+                </div>
+              )}
             </div>
           ))
         ) : (

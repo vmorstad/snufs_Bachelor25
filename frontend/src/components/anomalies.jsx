@@ -31,9 +31,7 @@ const Anomalies = () => {
       </div>
       {group.cves && group.cves.length > 0 ? (
         group.cves.map(renderCVE)
-      ) : (
-        <div className="no-anomalies">No vulnerabilities found for this CPE.</div>
-      )}
+      ) : null}
     </div>
   );
 
@@ -42,8 +40,11 @@ const Anomalies = () => {
       <h2>Device Vulnerabilities</h2>
       {selectedDevice ? (
         <div className="anomalies-list">
-          {selectedDevice.vulnerabilities && selectedDevice.vulnerabilities.length > 0 ? (
-            selectedDevice.vulnerabilities.map(renderCPEGroup)
+          {selectedDevice.vulnerabilities &&
+            selectedDevice.vulnerabilities.filter(group => group.cves && group.cves.length > 0).length > 0 ? (
+            selectedDevice.vulnerabilities
+              .filter(group => group.cves && group.cves.length > 0)
+              .map(renderCPEGroup)
           ) : (
             <div className="no-anomalies">
               No vulnerabilities detected for {selectedDevice.name || selectedDevice.ip}
