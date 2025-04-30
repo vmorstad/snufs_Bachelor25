@@ -6,17 +6,16 @@ export const DeviceProvider = ({ children }) => {
   const [searchInput, setSearchInput] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedDevice, setSelectedDevice] = useState(null);
 
   const handleSearch = async () => {
     if (!searchInput.trim()) return;
-    
     setIsLoading(true);
     try {
       const response = await fetch(
         `http://localhost:8000/scan?auth_ips=${encodeURIComponent(searchInput)}`
       );
       const data = await response.json();
-      
       if (Array.isArray(data)) {
         setSearchResults(data);
       } else {
@@ -31,6 +30,10 @@ export const DeviceProvider = ({ children }) => {
     }
   };
 
+  const handleDeviceSelect = (device) => {
+    setSelectedDevice(device);
+  };
+
   return (
     <DeviceContext.Provider 
       value={{
@@ -40,7 +43,9 @@ export const DeviceProvider = ({ children }) => {
         setSearchResults,
         isLoading,
         setIsLoading,
-        handleSearch
+        handleSearch,
+        selectedDevice,
+        handleDeviceSelect
       }}
     >
       {children}

@@ -1,0 +1,115 @@
+.anomalies-section {
+  padding: 20px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+
+.anomalies-section h2 {
+  color: #333;
+  margin-bottom: 20px;
+}
+
+.anomalies-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.anomaly-card {
+  background-color: white;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s;
+}
+
+.anomaly-card:hover {
+  transform: translateY(-2px);
+}
+
+.anomaly-card.critical {
+  border-left: 4px solid #dc3545;
+}
+
+.anomaly-card.high {
+  border-left: 4px solid #fd7e14;
+}
+
+.anomaly-card.medium {
+  border-left: 4px solid #ffc107;
+}
+
+.anomaly-card.low {
+  border-left: 4px solid #28a745;
+}
+
+.anomaly-card.unknown {
+  border-left: 4px solid #6c757d;
+}
+
+.anomaly-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.anomaly-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.severity-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.severity-badge.critical {
+  background-color: #dc3545;
+  color: white;
+}
+
+.severity-badge.high {
+  background-color: #fd7e14;
+  color: white;
+}
+
+.severity-badge.medium {
+  background-color: #ffc107;
+  color: #333;
+}
+
+.severity-badge.low {
+  background-color: #28a745;
+  color: white;
+}
+
+.severity-badge.unknown {
+  background-color: #6c757d;
+  color: white;
+}
+
+.anomaly-content {
+  color: #666;
+}
+
+.anomaly-content p {
+  margin: 8px 0;
+  line-height: 1.4;
+}
+
+.loading,
+.no-anomalies,
+.no-device-selected {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+} 
