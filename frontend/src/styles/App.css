@@ -207,17 +207,18 @@ code {
 
 /* Device Cards */
 .device-card {
+  width: 100%;
+  box-sizing: border-box;
   background: white;
   border-radius: 8px;
   padding: 15px;
-  margin-bottom: 0;
+  margin: 4px 0; /* Only vertical margin for separation */
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
   cursor: pointer;
   min-height: 60px;
   flex-shrink: 0;
   border: 1px solid #e0e0e0;
-  margin: 4px;
 }
 
 .device-card:hover {
@@ -235,7 +236,8 @@ code {
 
 .device-card.expanded {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  border-color: #c0c0c0;
+  border-color: #1a73e8;
+  background: #f5faff;
 }
 
 .device-card .device-content {
@@ -309,7 +311,7 @@ code {
   gap: 0;
   animation: fadeIn 0.3s ease-in-out;
   overflow-y: scroll;
-  padding: 4px;
+  padding: 0; /* Only vertical padding */
 }
 
 @keyframes fadeIn {
