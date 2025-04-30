@@ -1,0 +1,68 @@
+.vulnerabilities-section {
+  padding: 20px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1.5px solid #e0e0e0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  margin-top: 0;
+  height: 100%;
+  max-height: 540px;
+  overflow-y: auto;
+}
+.vulnerabilities-section h2 {
+  color: #333;
+  margin-bottom: 20px;
+}
+.vulnerabilities-list {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+.cpe-group {
+  background: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  margin-bottom: 8px;
+}
+.vulnerability-card {
+  background: none;
+  border-radius: 0;
+  box-shadow: none;
+  margin-bottom: 12px;
+  margin-left: 0;
+  border-left: none;
+}
+.vulnerability-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.vulnerability-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+.severity-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+.vulnerability-content {
+  color: #666;
+}
+.vulnerability-content p {
+  margin: 8px 0;
+  line-height: 1.4;
+}
+.no-vulnerabilities, .no-device-selected {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+} 

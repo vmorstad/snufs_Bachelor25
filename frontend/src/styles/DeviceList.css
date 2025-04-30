@@ -85,8 +85,8 @@
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
-  height: 100%;
   overflow-y: auto;
+  padding-bottom: 1rem;
 }
 
 .device-content {
@@ -134,9 +134,14 @@
 }
 
 .devices-section {
-  height: 100%;
+  background: #fff;
+  border-radius: 10px;
+  border: 1.5px solid #e0e0e0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  padding: 24px;
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
 }
 
 .device-card.selected h3 {

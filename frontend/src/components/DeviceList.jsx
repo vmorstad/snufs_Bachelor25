@@ -26,6 +26,7 @@ const DeviceList = () => {
 
   return (
     <div className="devices-section">
+      <h2>Device List</h2>
       <div className="devices-list">
         {searchResults.length > 0 ? (
           searchResults.map((device, index) => (

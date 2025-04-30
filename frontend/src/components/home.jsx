@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDevices } from '../context/DeviceContext';
 import DeviceList from './DeviceList';
-import Anomalies from './anomalies';
+import Vulnerabilities from './Vulnerabilities';
 import Heatmap from './Heatmap';
 import '../styles/Home.css';
 
@@ -59,7 +59,7 @@ const Home = () => {
         <div className="content-grid">
           <DeviceList />
           
-          <Anomalies />
+          <Vulnerabilities />
           
           <Heatmap />
         </div>

@@ -311,7 +311,8 @@ code {
   gap: 0;
   animation: fadeIn 0.3s ease-in-out;
   overflow-y: scroll;
-  padding: 0; /* Only vertical padding */
+  padding: 0;
+  padding-bottom: 1rem;
 }
 
 @keyframes fadeIn {
