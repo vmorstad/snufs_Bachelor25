@@ -13,21 +13,86 @@ def scan_network(network_range):
         devices.append({'ip': received.psrc, 'mac': received.hwsrc})
     return devices
 
+def normalize_cpe(cpe_string):
+    """Normalize CPE strings to the format expected by the CVE database"""
+    if not cpe_string:
+        return None
+        
+    # If it's already in CPE 2.3 format, return as is
+    if cpe_string.startswith("cpe:2.3:"):
+        return cpe_string
+        
+    # Convert old format to 2.3
+    if cpe_string.startswith("cpe:/"):
+        parts = cpe_string.split(":")
+        if len(parts) < 3:
+            return None
+            
+        vendor_product = parts[2].split("/")
+        if len(vendor_product) != 2:
+            return None
+            
+        vendor = vendor_product[0]
+        product = vendor_product[1]
+        
+        # Construct CPE 2.3 format
+        return f"cpe:2.3:o:{vendor}:{product}:*:*:*:*:*:*:*:*"
+    
+    return None
+
 def parse_os_info(nmap_output):
     lines = nmap_output.splitlines()
+    os_matches = []
+    
     for line in lines:
         line = line.strip()
-        if line.startswith("OS details:"):
-            return line.replace("OS details:", "").strip()
-        elif line.startswith("Running:"):
-            return line.replace("Running:", "").strip()
+        if "OS details:" in line:
+            os_matches.append(line.split(":", 1)[1].strip())
+        elif "Running:" in line:
+            os_matches.append(line.split(":", 1)[1].strip())
+        elif "OS CPE:" in line:
+            cpe = line.split(":", 1)[1].strip()
+            # Only add valid CPE strings
+            if cpe.startswith("cpe:/o:") or cpe.startswith("cpe:2.3:o:"):
+                normalized_cpe = normalize_cpe(cpe)
+                if normalized_cpe and normalized_cpe not in os_matches:
+                    os_matches.append(normalized_cpe)
+    
+    # Clean and deduplicate OS matches
+    unique_matches = []
+    for match in os_matches:
+        # Split concatenated CPEs
+        if "cpe:" in match:
+            cpes = [cpe.strip() for cpe in match.split("cpe:") if cpe.strip()]
+            for cpe in cpes:
+                if not cpe.startswith("/o:") and not cpe.startswith("2.3:o:"):
+                    continue
+                    
+                full_cpe = f"cpe:{cpe}"
+                normalized_cpe = normalize_cpe(full_cpe)
+                if normalized_cpe and normalized_cpe not in unique_matches:
+                    unique_matches.append(normalized_cpe)
+        else:
+            if match not in unique_matches:
+                unique_matches.append(match)
+    
+    if unique_matches:
+        return " | ".join(unique_matches)
+    
     if "No exact OS matches" in nmap_output:
         return "No exact OS match"
     return "Unknown OS or Version"
 
 def detect_os(ip_address):
     try:
-        nmap_result = subprocess.check_output(["nmap", "-O", ip_address], universal_newlines=True)
+        # Simple but effective OS detection
+        nmap_result = subprocess.check_output([
+            "nmap",
+            "-O",                     # OS detection
+            "-sV",                    # Version detection
+            "--osscan-guess",         # Make a best-effort guess
+            ip_address
+        ], universal_newlines=True)
         os_info = parse_os_info(nmap_result)
         return os_info
     except subprocess.CalledProcessError as e:
@@ -42,15 +107,30 @@ def get_device_name(ip_address):
 
 def scan_ports(ip_address):
     """
-    Uses Nmap to perform a port scan with service/version detection (-sV).
-    Returns a list of open port lines containing the port number and service info.
+    Basic port scanning with service detection
     """
     try:
-        nmap_output = subprocess.check_output(["nmap", "-sV", ip_address], universal_newlines=True)
+        nmap_output = subprocess.check_output([
+            "nmap",
+            "-sV",                    # Version detection
+            "-sS",                    # SYN scan
+            ip_address
+        ], universal_newlines=True)
+        
         open_ports = []
+        service_info = False
+        
         for line in nmap_output.splitlines():
+            line = line.strip()
             if "/tcp" in line and "open" in line:
                 open_ports.append(line.strip())
+                service_info = True
+            # Include additional service information
+            elif service_info and line and not line.startswith("MAC") and not line.startswith("Nmap"):
+                if len(open_ports) > 0:
+                    open_ports[-1] = f"{open_ports[-1]} ({line.strip()})"
+                service_info = False
+                
         return open_ports
     except subprocess.CalledProcessError as e:
         return [f"Error scanning ports on {ip_address}: {e}"]
