@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDevices } from '../context/DeviceContext';
 import DeviceList from './DeviceList';
 import Anomalies from './anomalies';
+import '../styles/Home.css';
 
 const Home = () => {
   const navigate = useNavigate();

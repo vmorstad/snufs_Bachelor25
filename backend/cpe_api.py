@@ -51,38 +51,45 @@ class CPEAPI:
     def analyze_device_vulnerabilities(self, device_info):
         """
         Analyze a device's vulnerabilities based on its OS and open ports.
-        Uses Nmap service detection data for accurate vulnerability matching.
+        Returns a list of dicts, each with cpe, cpe_title, and cves.
         """
-        vulnerabilities = []
-        
+        cpe_vuln_groups = []
+        seen_cpes = set()
+
         # Check OS vulnerabilities
         if device_info.get('os'):
-            # Extract OS name and version if possible
             os_match = re.match(r'([^(]+)(?:\(([^)]+)\))?', device_info['os'])
             if os_match:
                 os_name = os_match.group(1).strip()
                 os_version = os_match.group(2).strip() if os_match.group(2) else None
-                
-                # Create CPE name for OS
                 os_cpe = self.create_cpe_name(os_name, os_version)
-                os_vulns = self.cve_api.search_cves(os_cpe)
-                vulnerabilities.extend(os_vulns)
-        
+                if os_cpe not in seen_cpes:
+                    os_vulns = self.cve_api.search_cves(os_cpe)
+                    cpe_vuln_groups.append({
+                        "cpe": os_cpe,
+                        "cpe_title": f"{os_name} {os_version or ''}".strip(),
+                        "cves": os_vulns
+                    })
+                    seen_cpes.add(os_cpe)
+
         # Check service vulnerabilities
         if device_info.get('ports'):
             for port_info in device_info['ports']:
                 service, version = self.extract_service_info(port_info)
-                if service and version:
-                    # Create CPE name for service
+                if service:
                     service_cpe = self.create_cpe_name(service, version)
-                    service_vulns = self.cve_api.search_cves(service_cpe)
-                    vulnerabilities.extend(service_vulns)
-        
-        # Sort by severity (critical -> high -> medium -> low)
-        severity_order = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3, 'unknown': 4}
-        vulnerabilities.sort(key=lambda x: severity_order.get(x['severity'].lower(), 4))
-        
-        return vulnerabilities
+                    if service_cpe not in seen_cpes:
+                        service_vulns = self.cve_api.search_cves(service_cpe)
+                        cpe_vuln_groups.append({
+                            "cpe": service_cpe,
+                            "cpe_title": f"{service} {version or ''}".strip(),
+                            "cves": service_vulns
+                        })
+                        seen_cpes.add(service_cpe)
+
+        # Optionally, sort by number of CVEs or severity
+        cpe_vuln_groups.sort(key=lambda x: -len(x['cves']))
+        return cpe_vuln_groups
 
 # Create a global instance
 cpe_api = CPEAPI()
