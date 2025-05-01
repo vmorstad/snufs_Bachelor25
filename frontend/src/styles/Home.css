@@ -1,11 +1,60 @@
 .home-container {
-  max-width: 1200px;
+  padding: 2rem;
+  width: 100%;
+}
+
+.search-section {
+  margin-bottom: 2rem;
+  padding: 0 1rem;
+}
+
+.search-bar {
+  max-width: 800px;
   margin: 0 auto;
-  padding: 20px;
-  min-height: 100vh;
-  height: 100vh;
   display: flex;
-  flex-direction: column;
+  gap: 1rem;
+}
+
+.search-bar input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.search-bar button {
+  padding: 0.75rem 1.5rem;
+  background-color: #1a73e8;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.search-bar button:hover {
+  background-color: #1557b0;
+}
+
+.search-bar button:disabled {
+  background-color: #a1a1a1;
+  cursor: not-allowed;
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  padding: 0 1rem;
+}
+
+/* Responsive layout */
+@media (max-width: 1024px) {
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .home-header {
@@ -76,17 +125,6 @@
   font-size: 1.5rem;
   font-weight: bold;
   margin: 0;
-}
-
-.content-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto auto;
-  gap: 1.5rem 1.5rem;
-  align-items: stretch;
-  margin-top: 2rem;
-  height: auto;
-  min-height: 420px;
 }
 
 .devices-section, .anomalies-section, .vulnerabilities-section {
