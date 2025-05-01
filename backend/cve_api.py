@@ -3,6 +3,7 @@ import requests
 import json
 from datetime import datetime, timedelta
 import time
+import logging
 
 class CVEAPI:
     def __init__(self):
@@ -15,56 +16,82 @@ class CVEAPI:
             self.headers["apiKey"] = self.api_key
         self.last_request_time = 0
         self.min_request_interval = 6  # seconds between requests to respect rate limiting
+        self.max_retries = 3
+        self.retry_delay = 5  # seconds between retries
 
     def search_cves(self, cpe_name):
         """
         Search for CVEs related to a specific CPE name
         """
-        try:
-            # Format the CPE name for the API
-            cpe_name = cpe_name.replace(" ", "_")
-            
-            # Respect rate limiting
-            current_time = time.time()
-            time_since_last_request = current_time - self.last_request_time
-            if time_since_last_request < self.min_request_interval:
-                time.sleep(self.min_request_interval - time_since_last_request)
-            
-            # Make the API request
-            params = {
-                "cpeName": cpe_name,
-                "resultsPerPage": 20  # Limit results to avoid rate limiting
-            }
-            
-            print(f"Searching CVEs for CPE: {cpe_name}")
-            response = requests.get(
-                self.base_url,
-                params=params,
-                headers=self.headers,
-                timeout=10  # Add timeout
-            )
-            
-            self.last_request_time = time.time()
-            
-            if response.status_code == 200:
-                vulnerabilities = self._parse_cve_response(response.json())
-                print(f"Found {len(vulnerabilities)} vulnerabilities for {cpe_name}")
-                return vulnerabilities
-            elif response.status_code == 403:
-                print("Rate limit exceeded. Waiting before retrying...")
-                time.sleep(30)  # Wait 30 seconds before retrying
-                return self.search_cves(cpe_name)  # Retry once
-            else:
-                print(f"Error fetching CVEs: {response.status_code}")
-                print(f"Response: {response.text}")
-                return []
+        if not self._validate_cpe(cpe_name):
+            print(f"Invalid CPE format: {cpe_name}")
+            return []
+
+        for attempt in range(self.max_retries):
+            try:
+                # Format the CPE name for the API
+                cpe_name = cpe_name.replace(" ", "_")
                 
-        except requests.exceptions.RequestException as e:
-            print(f"Request error in CVE search: {str(e)}")
-            return []
-        except Exception as e:
-            print(f"Unexpected error in CVE search: {str(e)}")
-            return []
+                # Respect rate limiting
+                current_time = time.time()
+                time_since_last_request = current_time - self.last_request_time
+                if time_since_last_request < self.min_request_interval:
+                    time.sleep(self.min_request_interval - time_since_last_request)
+                
+                # Make the API request
+                params = {
+                    "cpeName": cpe_name,
+                    "resultsPerPage": 20  # Limit results to avoid rate limiting
+                }
+                
+                print(f"Searching CVEs for CPE: {cpe_name}")
+                response = requests.get(
+                    self.base_url,
+                    params=params,
+                    headers=self.headers,
+                    timeout=10  # Add timeout
+                )
+                
+                self.last_request_time = time.time()
+                
+                if response.status_code == 200:
+                    return self._parse_cve_response(response.json())
+                elif response.status_code == 404:
+                    print(f"No CVEs found for CPE: {cpe_name}")
+                    return []
+                elif response.status_code == 429:
+                    print("Rate limited by NVD API. Waiting before retry...")
+                    time.sleep(self.retry_delay)
+                    continue
+                else:
+                    print(f"Error fetching CVEs: {response.status_code}")
+                    print(f"Response: {response.text}")
+                    if attempt < self.max_retries - 1:
+                        time.sleep(self.retry_delay)
+                        continue
+                    return []
+            except requests.exceptions.RequestException as e:
+                print(f"Request error: {e}")
+                if attempt < self.max_retries - 1:
+                    time.sleep(self.retry_delay)
+                    continue
+                return []
+        
+        return []
+
+    def _validate_cpe(self, cpe_name):
+        """
+        Validate CPE format
+        Format should be: cpe:2.3:a:vendor:product:version:*:*:*:*:*:*:*
+        """
+        parts = cpe_name.split(':')
+        if len(parts) != 13:
+            return False
+        if parts[0] != 'cpe' or parts[1] != '2.3':
+            return False
+        if parts[2] not in ['a', 'o', 'h']:  # application, operating system, hardware
+            return False
+        return True
 
     def _parse_cve_response(self, response_data):
         """

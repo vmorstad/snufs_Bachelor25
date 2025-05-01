@@ -1,132 +1,146 @@
 import re
 from cve_api import CVEAPI
 import subprocess
+import requests
+import time
 
 class CPEAPI:
     def __init__(self):
         self.cve_api = CVEAPI()
+        self.cpe_base_url = "https://services.nvd.nist.gov/rest/json/cpes/2.0"
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
+        self.last_request_time = 0
+        self.min_request_interval = 6  # seconds between requests to respect rate limiting
+
+    def search_cpes(self, search_term):
+        """
+        Search for CPEs using NVD's CPE API
+        """
+        try:
+            # Respect rate limiting
+            current_time = time.time()
+            time_since_last_request = current_time - self.last_request_time
+            if time_since_last_request < self.min_request_interval:
+                time.sleep(self.min_request_interval - time_since_last_request)
+            
+            params = {
+                "keywordSearch": search_term,
+                "resultsPerPage": 20
+            }
+            
+            print(f"Searching CPEs for: {search_term}")
+            response = requests.get(
+                self.cpe_base_url,
+                params=params,
+                headers=self.headers,
+                timeout=10
+            )
+            
+            self.last_request_time = time.time()
+            
+            if response.status_code == 200:
+                return self._parse_cpe_response(response.json())
+            else:
+                print(f"Error searching CPEs: {response.status_code}")
+                print(f"Response: {response.text}")
+                return []
+        except Exception as e:
+            print(f"Error in CPE search: {e}")
+            return []
+
+    def _parse_cpe_response(self, response_data):
+        """
+        Parse the CPE API response to extract valid CPEs
+        """
+        cpes = []
+        if "products" in response_data:
+            for product in response_data["products"]:
+                if "cpe" in product:
+                    cpe = product["cpe"]["cpeName"]
+                    cpes.append(cpe)
+        return cpes
 
     def extract_service_info(self, port_line):
         """
         Extract service name and version from Nmap port scan output.
         Example input: "80/tcp open  http    Apache httpd 2.4.41"
         """
-        match = re.match(r'(\d+/tcp)\s+open\s+(\w+)(?:\s+([\w.\-]+))?(?:\s+([\d\.]+))?', port_line)
+        # Enhanced regex to capture more version patterns
+        match = re.match(r'(\d+/tcp)\s+open\s+(\w+)(?:\s+([\w.\-]+))?(?:\s+([\d\.]+))?(?:\s+\(([^)]+)\))?', port_line)
         if match:
             service = match.group(2)
             # Try to get version from group 4, or group 3 if it looks like a version
-            version = match.group(4) or (match.group(3) if match.group(3) and re.match(r'\\d', match.group(3)) else None)
-            return service, version
-        return None, None
+            version = match.group(4) or (match.group(3) if match.group(3) and re.match(r'\d', match.group(3)) else None)
+            # Get additional info from parentheses if present
+            additional_info = match.group(5) if match.group(5) else None
+            return service, version, additional_info
+        return None, None, None
 
-    def create_cpe_name(self, service, version):
+    def create_cpe_names(self, service, version, additional_info=None):
         """
-        Create a CPE name from service and version information
-        Format: cpe:2.3:a:vendor:product:version:*:*:*:*:*:*:*
-        Only generate CPEs for real products with known CVEs.
+        Create CPE names from service and version information
+        Returns a list of CPEs to try for better coverage
         """
-        # Only include real products with CVEs
-        service_mapping = {
-            'apache': ('apache', 'http_server'),
-            'http': ('apache', 'http_server'),
-            'nginx': ('nginx', 'nginx'),
-            'mysql': ('mysql', 'mysql'),
-            'postgresql': ('postgresql', 'postgresql'),
-            'mariadb': ('mariadb', 'mariadb'),
-            'ssh': ('openssh', 'openssh'),
-            'ftp': ('proftpd', 'proftpd'),
-            'smb': ('microsoft', 'windows'),
-            'rdp': ('microsoft', 'windows'),
-            'vnc': ('realvnc', 'vnc_server'),
-            'express': ('expressjs', 'express'),
-            'node': ('nodejs', 'nodejs'),
-            # Add more as you encounter new banners
-        }
-        if service.lower() not in service_mapping:
-            return None  # Skip generic/non-product services
-        vendor, product = service_mapping[service.lower()]
-        version = (version or '*').replace(' ', '_').lower()
-        return f"cpe:2.3:a:{vendor}:{product}:{version}:*:*:*:*:*:*:*"
+        cpes = []
+        service = service.lower()
+        
+        # Handle OS detection
+        if service in ['windows', 'microsoft-ds', 'msrpc', 'netbios-ssn']:
+            # Search for Windows CPEs
+            search_term = f"microsoft windows {version if version else ''}"
+            cpes.extend(self.search_cpes(search_term))
+            if not cpes:  # If no specific version found, try without version
+                cpes.extend(self.search_cpes("microsoft windows"))
+            return cpes
+
+        # Handle other services
+        search_terms = []
+        if version:
+            search_terms.append(f"{service} {version}")
+        search_terms.append(service)  # Always try without version too
+        
+        for term in search_terms:
+            found_cpes = self.search_cpes(term)
+            cpes.extend(found_cpes)
+        
+        return list(set(cpes))  # Remove duplicates
 
     def analyze_device_vulnerabilities(self, device_info):
         """
-        Analyze a device's vulnerabilities based on its OS and open ports.
-        Returns a list of dicts, each with cpe, cpe_title, and cves.
+        Analyze vulnerabilities for a device
         """
-        cpe_vuln_groups = []
-        seen_cpes = set()
-
-        # Expanded OS mapping
-        os_mapping = {
-            # Windows
-            'Microsoft Windows 10': ('microsoft', 'windows', '10'),
-            'Microsoft Windows 11': ('microsoft', 'windows', '11'),
-            'Microsoft Windows 7': ('microsoft', 'windows', '7'),
-            'Microsoft Windows 8': ('microsoft', 'windows', '8'),
-            'Microsoft Windows XP': ('microsoft', 'windows_xp', '*'),
-            # Mac
-            'Apple Mac OS X': ('apple', 'mac_os_x', '*'),
-            'Mac OS X': ('apple', 'mac_os_x', '*'),
-            'macOS': ('apple', 'mac_os_x', '*'),  # Use mac_os_x for all Mac versions
-            # Linux (common distros)
-            'Ubuntu': ('canonical', 'ubuntu_linux', '*'),
-            'Debian': ('debian', 'debian_linux', '*'),
-            'CentOS': ('centos', 'centos', '*'),
-            'Red Hat': ('redhat', 'enterprise_linux', '*'),
-            'Fedora': ('fedoraproject', 'fedora', '*'),
-            'Arch Linux': ('archlinux', 'arch_linux', '*'),
-            'Kali Linux': ('offensive_security', 'kali_linux', '*'),
-            'Linux': ('linux', 'linux_kernel', '*'),
-            # Add more as you encounter them!
-        }
-
-        # Check OS vulnerabilities
+        vulnerabilities = []
+        
+        # Handle OS vulnerabilities
         if device_info.get('os'):
-            os_match = re.match(r'([^(]+)(?:\(([^)]+)\))?', device_info['os'])
-            if os_match:
-                os_name = os_match.group(1).strip()
-                os_version = os_match.group(2).strip() if os_match.group(2) else None
-                os_name_clean = os_name.split('|')[0].strip()
-                vendor, product, default_version = os_mapping.get(os_name_clean, (os_name_clean.lower(), os_name_clean.lower(), os_version or '*'))
-                # For Mac, try to extract version from os_name if not present
-                if product == 'mac_os_x':
-                    version_match = re.search(r'\d+[\.\d]*', os_name)
-                    version = version_match.group(0) if version_match else (os_version or default_version)
-                elif default_version == '*' and os_version is None:
-                    version_match = re.search(r'\d+[\.\d]*', os_name_clean)
-                    version = version_match.group(0) if version_match else '*'
-                else:
-                    version = os_version or default_version
-                os_cpe = f"cpe:2.3:o:{vendor}:{product}:{version}:*:*:*:*:*:*:*"
-                if os_cpe not in seen_cpes:
-                    os_vulns = self.cve_api.search_cves(os_cpe)
-                    cpe_vuln_groups.append({
-                        "cpe": os_cpe,
-                        "cpe_title": f"{os_name} {os_version or ''}".strip(),
-                        "cves": os_vulns
+            os_cpes = self.create_cpe_names(device_info['os'], None)
+            for cpe in os_cpes:
+                cves = self.cve_api.search_cves(cpe)
+                if cves:
+                    vulnerabilities.append({
+                        'cpe': cpe,
+                        'cpe_title': device_info['os'],
+                        'cves': cves
                     })
-                    seen_cpes.add(os_cpe)
 
-        # Check service vulnerabilities
+        # Handle service vulnerabilities
         if device_info.get('ports'):
-            for port_info in device_info['ports']:
-                service, version = self.extract_service_info(port_info)
+            for port in device_info['ports']:
+                service, version, additional_info = self.extract_service_info(port)
                 if service:
-                    service_cpe = self.create_cpe_name(service, version)
-                    if not service_cpe:
-                        continue  # Skip generic/non-product services
-                    if service_cpe not in seen_cpes:
-                        service_vulns = self.cve_api.search_cves(service_cpe)
-                        cpe_vuln_groups.append({
-                            "cpe": service_cpe,
-                            "cpe_title": f"{service} {version or ''}".strip(),
-                            "cves": service_vulns
-                        })
-                        seen_cpes.add(service_cpe)
-
-        # Optionally, sort by number of CVEs or severity
-        cpe_vuln_groups.sort(key=lambda x: -len(x['cves']))
-        return cpe_vuln_groups
+                    cpes = self.create_cpe_names(service, version, additional_info)
+                    for cpe in cpes:
+                        cves = self.cve_api.search_cves(cpe)
+                        if cves:
+                            vulnerabilities.append({
+                                'cpe': cpe,
+                                'cpe_title': f"{service} {version}" if version else service,
+                                'cves': cves
+                            })
+        
+        return vulnerabilities
 
 # Create a global instance
 cpe_api = CPEAPI()

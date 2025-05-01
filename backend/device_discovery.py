@@ -1,16 +1,22 @@
 import re
-import socket
 from scapy.all import ARP, Ether, srp
 import subprocess
 
 def scan_network(network_range):
+    """
+    Scan the network for active devices using ARP
+    Returns a list of dictionaries containing IP and MAC addresses
+    """
     arp = ARP(pdst=network_range)
     ether = Ether(dst="ff:ff:ff:ff:ff:ff")
     packet = ether / arp
     result = srp(packet, timeout=5, verbose=True)[0]
     devices = []
     for sent, received in result:
-        devices.append({'ip': received.psrc, 'mac': received.hwsrc})
+        devices.append({
+            'ip': received.psrc,
+            'mac': received.hwsrc
+        })
     return devices
 
 def normalize_cpe(cpe_string):
@@ -41,100 +47,74 @@ def normalize_cpe(cpe_string):
     return None
 
 def detect_os(ip_address):
+    """
+    Detect the operating system of a device using Nmap
+    """
     try:
-        # More reliable OS detection with service version detection
         nmap_result = subprocess.check_output([
             "nmap",
             "-sV",                    # Service/version detection
             "-O",                     # OS detection
             "--osscan-limit",         # Limit OS detection to promising targets
-            "--max-os-tries", "1",    # Limit OS detection retries
-            "-p-",                    # Scan all ports
-            "--version-light",        # Light version detection
             ip_address
-        ], universal_newlines=True, stderr=subprocess.STDOUT)
+        ], universal_newlines=True)
         
-        # First try to get OS from service detection
-        service_os = parse_service_os(nmap_result)
-        if service_os:
-            return service_os
-            
-        # Fall back to regular OS detection
-        return parse_os_info(nmap_result)
+        # Parse OS information from Nmap output
+        os_info = parse_os_info(nmap_result)
+        return os_info
     except subprocess.CalledProcessError as e:
-        return f"Error running Nmap on {ip_address}: {e.output if hasattr(e, 'output') else str(e)}"
-
-def parse_service_os(nmap_output):
-    """Try to determine OS from service detection results"""
-    windows_indicators = [
-        "Microsoft Windows",
-        "microsoft-ds",
-        "netbios-ssn",
-        "msrpc"
-    ]
-    
-    linux_indicators = [
-        "Linux",
-        "Unix",
-        "OpenSSH",
-        "sshd"
-    ]
-    
-    lines = nmap_output.splitlines()
-    windows_count = 0
-    linux_count = 0
-    
-    for line in lines:
-        line = line.lower()
-        for indicator in windows_indicators:
-            if indicator.lower() in line:
-                windows_count += 1
-        for indicator in linux_indicators:
-            if indicator.lower() in line:
-                linux_count += 1
-    
-    if windows_count > linux_count and windows_count > 0:
-        return "Microsoft Windows"
-    elif linux_count > windows_count and linux_count > 0:
-        return "Linux"
-    
-    return None
+        print(f"Error detecting OS for {ip_address}: {e}")
+        return "Unknown"
 
 def parse_os_info(nmap_output):
-    lines = nmap_output.splitlines()
-    os_matches = []
+    """
+    Parse OS information from Nmap output
+    """
+    os_lines = [line for line in nmap_output.split('\n') if 'OS details:' in line or 'OS CPE:' in line]
+    if not os_lines:
+        return "Unknown"
     
-    for line in lines:
-        line = line.strip()
-        if "OS details:" in line:
-            os_matches.append(line.split(":", 1)[1].strip())
-        elif "Running:" in line:
-            os_matches.append(line.split(":", 1)[1].strip())
-        elif "OS CPE:" in line:
-            cpe = line.split(":", 1)[1].strip()
-            if cpe.startswith("cpe:/o:") or cpe.startswith("cpe:2.3:o:"):
-                normalized_cpe = normalize_cpe(cpe)
-                if normalized_cpe and normalized_cpe not in os_matches:
-                    os_matches.append(normalized_cpe)
+    # Try to extract OS name from CPE first
+    for line in os_lines:
+        if 'OS CPE:' in line:
+            cpe_match = re.search(r'cpe:/[^:]+:([^:]+):', line)
+            if cpe_match:
+                os_name = cpe_match.group(1).replace('_', ' ').title()
+                return os_name
     
-    # If we found any OS matches, return them
-    if os_matches:
-        return " | ".join(os_matches)
+    # If no CPE, try to extract from OS details
+    for line in os_lines:
+        if 'OS details:' in line:
+            os_match = re.search(r'OS details: ([^,]+)', line)
+            if os_match:
+                return os_match.group(1)
     
-    # If no matches but we see Windows services
-    if any("microsoft" in line.lower() or "windows" in line.lower() for line in lines):
-        return "cpe:2.3:o:microsoft:windows:*:*:*:*:*:*:*:*"
-    
-    if "No exact OS matches" in nmap_output:
-        return "No exact OS match"
-    return "Unknown OS or Version"
+    return "Unknown"
 
 def get_device_name(ip_address):
+    """
+    Get the device name using Nmap
+    Returns the hostname if found, None otherwise
+    """
     try:
-        hostname = socket.gethostbyaddr(ip_address)[0]
-        return hostname
-    except socket.herror:
-        return "Unknown device name"
+        nmap_result = subprocess.check_output([
+            "nmap",
+            "-sn",  # Ping scan only
+            ip_address
+        ], universal_newlines=True)
+        
+        # Look for hostname in Nmap output
+        hostname_match = re.search(r'Nmap scan report for ([^\n]+)', nmap_result)
+        if hostname_match:
+            hostname = hostname_match.group(1)
+            # If hostname is an IP, return None
+            if re.match(r'^\d+\.\d+\.\d+\.\d+$', hostname):
+                return None
+            return hostname
+        return None
+    except subprocess.CalledProcessError as e:
+        print(f"Error getting device name for {ip_address}: {e}")
+        return None
 
 def scan_ports(ip_address):
     """
