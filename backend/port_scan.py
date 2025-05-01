@@ -5,50 +5,74 @@ import re
 
 def scan_device(ip_address):
     """
-    Perform a comprehensive scan of a device including:
-    - Open ports
-    - Service detection
-    - OS detection
-    - Version detection
+    Perform a targeted scan of a device to get open ports, services, and OS information.
+    Uses a more efficient scanning strategy to reduce scan time.
     
-    Returns a dictionary containing:
-    - ports: List of open ports with service info
-    - os: Detected operating system
+    Args:
+        ip_address (str): IP address to scan
+        
+    Returns:
+        dict: Dictionary containing:
+            - ports: List of open ports with service info
+            - os: OS information if detected
     """
     try:
-        # Use -A for aggressive scan, -O for OS detection, -sV for service/version detection
-        nmap_cmd = ["nmap", "-A", "-O", "-sV", "-p-", ip_address]
-        result = subprocess.run(nmap_cmd, capture_output=True, text=True)
+        # Run nmap with optimized flags:
+        # -sV: Service detection
+        # -O: OS detection
+        # -T4: Aggressive timing template
+        # -p-: Scan all ports
+        # --min-rate 1000: Send at least 1000 packets per second
+        # --max-retries 1: Reduce retries
+        # --version-intensity 5: Balance between speed and accuracy
+        cmd = f"nmap -sV -O -T4 -p- --min-rate 1000 --max-retries 1 --version-intensity 5 {ip_address}"
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         
         if result.returncode != 0:
-            print(f"Error running Nmap: {result.stderr}")
+            print(f"Error running nmap: {result.stderr}")
             return {"ports": [], "os": "Unknown"}
             
-        # Parse the output
         output = result.stdout
+        
+        # Parse open ports and services
         ports = []
+        port_section = False
+        for line in output.split('\n'):
+            if 'PORT' in line and 'STATE' in line and 'SERVICE' in line:
+                port_section = True
+                continue
+            if port_section and line.strip() and not line.startswith('|'):
+                if '/tcp' in line or '/udp' in line:
+                    parts = line.split()
+                    if len(parts) >= 3:
+                        port = parts[0]
+                        state = parts[1]
+                        service = parts[2]
+                        version = ' '.join(parts[3:]) if len(parts) > 3 else ''
+                        ports.append({
+                            "port": port,
+                            "state": state,
+                            "service": service,
+                            "version": version
+                        })
+            elif port_section and not line.strip():
+                port_section = False
+                
+        # Parse OS information
         os_info = "Unknown"
-        
-        # Extract open ports with service information
-        for line in output.splitlines():
-            line = line.strip()
-            if "/tcp" in line and "open" in line:
-                ports.append(line)
-            
-            # Extract OS information
-            if "OS details:" in line:
-                os_match = re.search(r'OS details: ([^,]+)', line)
-                if os_match:
-                    os_info = os_match.group(1)
-            elif "OS CPE:" in line:
-                cpe_match = re.search(r'cpe:/[^:]+:([^:]+):', line)
-                if cpe_match:
-                    os_info = cpe_match.group(1).replace('_', ' ').title()
-        
+        for line in output.split('\n'):
+            if 'Running:' in line:
+                os_info = line.split('Running:')[1].strip()
+                break
+            elif 'OS details:' in line:
+                os_info = line.split('OS details:')[1].strip()
+                break
+                
         return {
             "ports": ports,
             "os": os_info
         }
+        
     except Exception as e:
         print(f"Error scanning device {ip_address}: {e}")
         return {"ports": [], "os": "Unknown"}

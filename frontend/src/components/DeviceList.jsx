@@ -17,7 +17,10 @@ const DeviceList = () => {
         <div><strong>Open Ports:</strong></div>
         <ul>
           {device.ports?.map((port, idx) => (
-            <li key={idx}>{port}</li>
+            <li key={idx}>
+              {port.port} - {port.service}
+              {port.version && ` (${port.version})`}
+            </li>
           ))}
         </ul>
       </div>

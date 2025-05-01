@@ -3,6 +3,8 @@ from cve_api import CVEAPI
 import subprocess
 import requests
 import time
+import json
+import os
 
 class CPEAPI:
     def __init__(self):
@@ -13,11 +15,42 @@ class CPEAPI:
         }
         self.last_request_time = 0
         self.min_request_interval = 6  # seconds between requests to respect rate limiting
+        
+        # Initialize caches
+        self.cpe_cache = {}
+        self.cve_cache = {}
+        self.load_caches()
+
+    def load_caches(self):
+        """Load caches from disk if they exist"""
+        try:
+            if os.path.exists('cpe_cache.json'):
+                with open('cpe_cache.json', 'r') as f:
+                    self.cpe_cache = json.load(f)
+            if os.path.exists('cve_cache.json'):
+                with open('cve_cache.json', 'r') as f:
+                    self.cve_cache = json.load(f)
+        except Exception as e:
+            print(f"Error loading caches: {e}")
+
+    def save_caches(self):
+        """Save caches to disk"""
+        try:
+            with open('cpe_cache.json', 'w') as f:
+                json.dump(self.cpe_cache, f)
+            with open('cve_cache.json', 'w') as f:
+                json.dump(self.cve_cache, f)
+        except Exception as e:
+            print(f"Error saving caches: {e}")
 
     def search_cpes(self, search_term):
         """
-        Search for CPEs using NVD's CPE API
+        Search for CPEs using NVD's CPE API with caching
         """
+        # Check cache first
+        if search_term in self.cpe_cache:
+            return self.cpe_cache[search_term]
+
         try:
             # Respect rate limiting
             current_time = time.time()
@@ -41,7 +74,11 @@ class CPEAPI:
             self.last_request_time = time.time()
             
             if response.status_code == 200:
-                return self._parse_cpe_response(response.json())
+                cpes = self._parse_cpe_response(response.json())
+                # Cache the results
+                self.cpe_cache[search_term] = cpes
+                self.save_caches()
+                return cpes
             else:
                 print(f"Error searching CPEs: {response.status_code}")
                 print(f"Response: {response.text}")
@@ -80,12 +117,16 @@ class CPEAPI:
 
     def create_cpe_names(self, service, version, additional_info=None):
         """
-        Create CPE names from service and version information
-        Returns a list of CPEs to try for better coverage
+        Create CPE names from service and version information with optimized search
         """
         cpes = []
         service = service.lower()
         
+        # Check cache first
+        cache_key = f"{service}:{version}:{additional_info}"
+        if cache_key in self.cpe_cache:
+            return self.cpe_cache[cache_key]
+
         # Handle OS detection
         if service in ['windows', 'microsoft-ds', 'msrpc', 'netbios-ssn']:
             # Search for Windows CPEs
@@ -93,6 +134,9 @@ class CPEAPI:
             cpes.extend(self.search_cpes(search_term))
             if not cpes:  # If no specific version found, try without version
                 cpes.extend(self.search_cpes("microsoft windows"))
+            # Cache the results
+            self.cpe_cache[cache_key] = cpes
+            self.save_caches()
             return cpes
 
         # Handle other services
@@ -105,42 +149,100 @@ class CPEAPI:
             found_cpes = self.search_cpes(term)
             cpes.extend(found_cpes)
         
-        return list(set(cpes))  # Remove duplicates
+        # Remove duplicates and cache results
+        cpes = list(set(cpes))
+        self.cpe_cache[cache_key] = cpes
+        self.save_caches()
+        return cpes
 
     def analyze_device_vulnerabilities(self, device_info):
         """
-        Analyze vulnerabilities for a device
+        Analyze vulnerabilities for a device with optimized CVE lookup
         """
         vulnerabilities = []
         
-        # Handle OS vulnerabilities
+        # Handle OS vulnerabilities first (always important)
         if device_info.get('os'):
             os_cpes = self.create_cpe_names(device_info['os'], None)
             for cpe in os_cpes:
-                cves = self.cve_api.search_cves(cpe)
+                # Check CVE cache
+                if cpe in self.cve_cache:
+                    cves = self.cve_cache[cpe]
+                else:
+                    cves = self.cve_api.search_cves(cpe, min_severity='high', max_results=5)
+                    self.cve_cache[cpe] = cves
+                    self.save_caches()
+                
                 if cves:
                     vulnerabilities.append({
                         'cpe': cpe,
                         'cpe_title': device_info['os'],
-                        'cves': cves
+                        'cves': cves,
+                        'type': 'os'
                     })
 
-        # Handle service vulnerabilities
+        # Handle service vulnerabilities, prioritizing critical services
         if device_info.get('ports'):
-            for port in device_info['ports']:
+            # Sort ports by service importance
+            sorted_ports = sorted(
+                device_info['ports'],
+                key=lambda x: self._get_service_priority(x),
+                reverse=True
+            )
+            
+            for port in sorted_ports:
                 service, version, additional_info = self.extract_service_info(port)
                 if service:
+                    # Skip if service is not critical and we already have enough vulnerabilities
+                    if len(vulnerabilities) >= 10 and service.lower() not in self.cve_api.critical_services:
+                        continue
+                        
                     cpes = self.create_cpe_names(service, version, additional_info)
                     for cpe in cpes:
-                        cves = self.cve_api.search_cves(cpe)
+                        # Check CVE cache
+                        if cpe in self.cve_cache:
+                            cves = self.cve_cache[cpe]
+                        else:
+                            cves = self.cve_api.search_cves(cpe, min_severity='high', max_results=5)
+                            self.cve_cache[cpe] = cves
+                            self.save_caches()
+                        
                         if cves:
                             vulnerabilities.append({
                                 'cpe': cpe,
                                 'cpe_title': f"{service} {version}" if version else service,
-                                'cves': cves
+                                'cves': cves,
+                                'type': 'service'
                             })
+                            
+                            # Stop if we have too many vulnerabilities
+                            if len(vulnerabilities) >= 20:
+                                return vulnerabilities
         
         return vulnerabilities
+
+    def _get_service_priority(self, port_info):
+        """
+        Get priority score for a service
+        Higher score means more important to check
+        """
+        service, version, _ = self.extract_service_info(port_info)
+        if not service:
+            return 0
+            
+        service = service.lower()
+        
+        # Critical services get highest priority
+        if service in self.cve_api.critical_services:
+            return 100
+            
+        # Common services get medium priority
+        common_services = {'dns', 'ntp', 'smtp', 'pop3', 'imap', 'nfs', 'samba'}
+        if service in common_services:
+            return 50
+            
+        # Everything else gets low priority
+        return 10
 
 # Create a global instance
 cpe_api = CPEAPI()
