@@ -16,6 +16,12 @@ class CPEAPI:
         self.last_request_time = 0
         self.min_request_interval = 6  # seconds between requests to respect rate limiting
         
+        # Initialize cache directory and files
+        self.cache_dir = os.path.join(os.path.dirname(__file__), 'cache')
+        os.makedirs(self.cache_dir, exist_ok=True)
+        self.cpe_cache_file = os.path.join(self.cache_dir, 'cpe_cache.json')
+        self.cve_cache_file = os.path.join(self.cache_dir, 'cve_cache.json')
+        
         # Initialize caches
         self.cpe_cache = {}
         self.cve_cache = {}
@@ -24,11 +30,11 @@ class CPEAPI:
     def load_caches(self):
         """Load caches from disk if they exist"""
         try:
-            if os.path.exists('cpe_cache.json'):
-                with open('cpe_cache.json', 'r') as f:
+            if os.path.exists(self.cpe_cache_file):
+                with open(self.cpe_cache_file, 'r') as f:
                     self.cpe_cache = json.load(f)
-            if os.path.exists('cve_cache.json'):
-                with open('cve_cache.json', 'r') as f:
+            if os.path.exists(self.cve_cache_file):
+                with open(self.cve_cache_file, 'r') as f:
                     self.cve_cache = json.load(f)
         except Exception as e:
             print(f"Error loading caches: {e}")
@@ -36,9 +42,9 @@ class CPEAPI:
     def save_caches(self):
         """Save caches to disk"""
         try:
-            with open('cpe_cache.json', 'w') as f:
+            with open(self.cpe_cache_file, 'w') as f:
                 json.dump(self.cpe_cache, f)
-            with open('cve_cache.json', 'w') as f:
+            with open(self.cve_cache_file, 'w') as f:
                 json.dump(self.cve_cache, f)
         except Exception as e:
             print(f"Error saving caches: {e}")

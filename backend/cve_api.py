@@ -20,6 +20,11 @@ class CVEAPI:
         self.max_retries = 3
         self.retry_delay = 5  # seconds between retries
         
+        # Initialize cache directory and file
+        self.cache_dir = os.path.join(os.path.dirname(__file__), 'cache')
+        os.makedirs(self.cache_dir, exist_ok=True)
+        self.cve_cache_file = os.path.join(self.cache_dir, 'cve_cache.json')
+        
         # Initialize cache
         self.cve_cache = {}
         self.load_cache()
@@ -34,8 +39,8 @@ class CVEAPI:
     def load_cache(self):
         """Load cache from disk if it exists"""
         try:
-            if os.path.exists('cve_cache.json'):
-                with open('cve_cache.json', 'r') as f:
+            if os.path.exists(self.cve_cache_file):
+                with open(self.cve_cache_file, 'r') as f:
                     self.cve_cache = json.load(f)
         except Exception as e:
             print(f"Error loading CVE cache: {e}")
@@ -43,7 +48,7 @@ class CVEAPI:
     def save_cache(self):
         """Save cache to disk"""
         try:
-            with open('cve_cache.json', 'w') as f:
+            with open(self.cve_cache_file, 'w') as f:
                 json.dump(self.cve_cache, f)
         except Exception as e:
             print(f"Error saving CVE cache: {e}")
