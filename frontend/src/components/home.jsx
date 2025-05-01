@@ -2,7 +2,7 @@ import React from 'react';
 import { useDevices } from '../context/DeviceContext';
 import DeviceList from './DeviceList';
 import Vulnerabilities from './Vulnerabilities';
-import Heatmap from './Heatmap';
+import Visualization from './Visualization';
 import '../styles/Home.css';
 
 const Home = () => {
@@ -10,8 +10,12 @@ const Home = () => {
     searchInput,
     setSearchInput,
     isLoading,
-    handleSearch
+    handleSearch,
+    selectedDevice
   } = useDevices();
+
+  // Prepare vulnerability data for visualization
+  const vulnerabilityData = selectedDevice && selectedDevice.vulnerabilities ? selectedDevice.vulnerabilities : [];
 
   return (
     <div className="home-container">
@@ -32,7 +36,10 @@ const Home = () => {
       <div className="content-grid">
         <DeviceList />
         <Vulnerabilities />
-        <Heatmap />
+        <div className="heatmap-section">
+          <h2>Vulnerability Visualization</h2>
+          <Visualization data={vulnerabilityData} />
+        </div>
       </div>
     </div>
   );

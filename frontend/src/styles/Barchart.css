@@ -1,0 +1,35 @@
+.barchart-svg {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  padding: 16px;
+  margin-bottom: 8px;
+  margin-top: 20px;
+  display: block;
+}
+
+.bar {
+  transition: fill 0.2s;
+  cursor: pointer;
+}
+
+.bar:hover {
+  fill: #1565c0;
+}
+
+.bar-label {
+  font-family: 'Inter', Arial, sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  fill: #222;
+}
+
+.axis text {
+  font-family: 'Inter', Arial, sans-serif;
+  font-size: 1rem;
+}
+
+.axis path,
+.axis line {
+  stroke: #bdbdbd;
+} 
