@@ -155,6 +155,33 @@ class CPEAPI:
         self.save_caches()
         return cpes
 
+    def _get_service_priority(self, port_info):
+        """
+        Get priority score for a service
+        Higher score means more important to check
+        """
+        # Handle both string and dictionary port info
+        if isinstance(port_info, dict):
+            service = port_info.get('service', '').lower()
+        else:
+            service, _, _ = self.extract_service_info(port_info)
+            service = service.lower() if service else ''
+            
+        if not service:
+            return 0
+            
+        # Critical services get highest priority
+        if service in self.cve_api.critical_services:
+            return 100
+            
+        # Common services get medium priority
+        common_services = {'dns', 'ntp', 'smtp', 'pop3', 'imap', 'nfs', 'samba'}
+        if service in common_services:
+            return 50
+            
+        # Everything else gets low priority
+        return 10
+
     def analyze_device_vulnerabilities(self, device_info):
         """
         Analyze vulnerabilities for a device with optimized CVE lookup
@@ -191,13 +218,16 @@ class CPEAPI:
             )
             
             for port in sorted_ports:
-                service, version, additional_info = self.extract_service_info(port)
+                # Get service info from dictionary
+                service = port.get('service', '').lower()
+                version = port.get('version', '')
+                
                 if service:
                     # Skip if service is not critical and we already have enough vulnerabilities
-                    if len(vulnerabilities) >= 10 and service.lower() not in self.cve_api.critical_services:
+                    if len(vulnerabilities) >= 10 and service not in self.cve_api.critical_services:
                         continue
                         
-                    cpes = self.create_cpe_names(service, version, additional_info)
+                    cpes = self.create_cpe_names(service, version)
                     for cpe in cpes:
                         # Check CVE cache
                         if cpe in self.cve_cache:
@@ -220,29 +250,6 @@ class CPEAPI:
                                 return vulnerabilities
         
         return vulnerabilities
-
-    def _get_service_priority(self, port_info):
-        """
-        Get priority score for a service
-        Higher score means more important to check
-        """
-        service, version, _ = self.extract_service_info(port_info)
-        if not service:
-            return 0
-            
-        service = service.lower()
-        
-        # Critical services get highest priority
-        if service in self.cve_api.critical_services:
-            return 100
-            
-        # Common services get medium priority
-        common_services = {'dns', 'ntp', 'smtp', 'pop3', 'imap', 'nfs', 'samba'}
-        if service in common_services:
-            return 50
-            
-        # Everything else gets low priority
-        return 10
 
 # Create a global instance
 cpe_api = CPEAPI()
