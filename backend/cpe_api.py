@@ -13,6 +13,10 @@ class CPEAPI:
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }
+        # Use the same API key as CVEAPI
+        self.api_key = "22e61a54-0bb8-4551-8147-3ba44b9de37a"  # Your API key
+        if self.api_key:
+            self.headers["apiKey"] = self.api_key
         self.last_request_time = 0
         self.min_request_interval = 6  # seconds between requests to respect rate limiting
         
@@ -190,19 +194,28 @@ class CPEAPI:
 
     def analyze_device_vulnerabilities(self, device_info):
         """
-        Analyze vulnerabilities for a device with optimized CVE lookup
+        Analyze vulnerabilities for a device with optimized CVE lookup and time limit
         """
         vulnerabilities = []
+        start_time = time.time()
+        time_limit = 60  # 1 minute per device
+        
+        def time_remaining():
+            return time_limit - (time.time() - start_time)
         
         # Handle OS vulnerabilities first (always important)
-        if device_info.get('os'):
+        if device_info.get('os') and time_remaining() > 0:
             os_cpes = self.create_cpe_names(device_info['os'], None)
             for cpe in os_cpes:
+                if time_remaining() <= 0:
+                    print("Time limit reached while scanning OS vulnerabilities")
+                    return vulnerabilities
+                    
                 # Check CVE cache
                 if cpe in self.cve_cache:
                     cves = self.cve_cache[cpe]
                 else:
-                    cves = self.cve_api.search_cves(cpe, min_severity='high', max_results=5)
+                    cves = self.cve_api.search_cves(cpe, min_severity='low', max_results=10)
                     self.cve_cache[cpe] = cves
                     self.save_caches()
                 
@@ -215,7 +228,7 @@ class CPEAPI:
                     })
 
         # Handle service vulnerabilities, prioritizing critical services
-        if device_info.get('ports'):
+        if device_info.get('ports') and time_remaining() > 0:
             # Sort ports by service importance
             sorted_ports = sorted(
                 device_info['ports'],
@@ -224,22 +237,30 @@ class CPEAPI:
             )
             
             for port in sorted_ports:
+                if time_remaining() <= 0:
+                    print("Time limit reached while scanning service vulnerabilities")
+                    return vulnerabilities
+                    
                 # Get service info from dictionary
                 service = port.get('service', '').lower()
                 version = port.get('version', '')
                 
                 if service:
                     # Skip if service is not critical and we already have enough vulnerabilities
-                    if len(vulnerabilities) >= 10 and service not in self.cve_api.critical_services:
+                    if len(vulnerabilities) >= 20 and service not in self.cve_api.critical_services:
                         continue
                         
                     cpes = self.create_cpe_names(service, version)
                     for cpe in cpes:
+                        if time_remaining() <= 0:
+                            print("Time limit reached while scanning CPEs")
+                            return vulnerabilities
+                            
                         # Check CVE cache
                         if cpe in self.cve_cache:
                             cves = self.cve_cache[cpe]
                         else:
-                            cves = self.cve_api.search_cves(cpe, min_severity='high', max_results=5)
+                            cves = self.cve_api.search_cves(cpe, min_severity='low', max_results=10)
                             self.cve_cache[cpe] = cves
                             self.save_caches()
                         
@@ -252,7 +273,7 @@ class CPEAPI:
                             })
                             
                             # Stop if we have too many vulnerabilities
-                            if len(vulnerabilities) >= 20:
+                            if len(vulnerabilities) >= 30:
                                 return vulnerabilities
         
         return vulnerabilities

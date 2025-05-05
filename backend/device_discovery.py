@@ -93,26 +93,57 @@ def parse_os_info(nmap_output):
 
 def get_device_name(ip_address):
     """
-    Get the device name using Nmap
+    Get the device name using multiple methods
     Returns the hostname if found, None otherwise
     """
     try:
-        nmap_result = subprocess.check_output([
+        # Try DNS lookup first
+        try:
+            import socket
+            hostname = socket.gethostbyaddr(ip_address)[0]
+            if hostname and not re.match(r'^\d+\.\d+\.\d+\.\d+$', hostname):
+                return hostname
+        except (socket.herror, socket.gaierror):
+            pass
+
+        # Try Nmap if DNS fails
+        nmap_result = subprocess.run([
             "nmap",
             "-sn",  # Ping scan only
+            "-n",   # No DNS resolution
             ip_address
-        ], universal_newlines=True)
+        ], capture_output=True, text=True)
         
-        # Look for hostname in Nmap output
-        hostname_match = re.search(r'Nmap scan report for ([^\n]+)', nmap_result)
-        if hostname_match:
-            hostname = hostname_match.group(1)
-            # If hostname is an IP, return None
-            if re.match(r'^\d+\.\d+\.\d+\.\d+$', hostname):
-                return None
-            return hostname
+        if nmap_result.returncode == 0:
+            # Look for hostname in Nmap output
+            hostname_match = re.search(r'Nmap scan report for ([^\n]+)', nmap_result.stdout)
+            if hostname_match:
+                hostname = hostname_match.group(1)
+                # If hostname is an IP, return None
+                if not re.match(r'^\d+\.\d+\.\d+\.\d+$', hostname):
+                    return hostname
+
+        # Try NetBIOS name if available
+        try:
+            nbtscan_result = subprocess.run([
+                "nbtscan",
+                ip_address
+            ], capture_output=True, text=True)
+            
+            if nbtscan_result.returncode == 0:
+                # Parse NetBIOS name from output
+                for line in nbtscan_result.stdout.splitlines():
+                    if ip_address in line:
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            name = parts[1]
+                            if name and not re.match(r'^\d+\.\d+\.\d+\.\d+$', name):
+                                return name
+        except (subprocess.SubprocessError, FileNotFoundError):
+            pass
+
         return None
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         print(f"Error getting device name for {ip_address}: {e}")
         return None
 

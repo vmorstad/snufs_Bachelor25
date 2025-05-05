@@ -60,10 +60,21 @@ const Barchart = ({ data }) => {
       .append('text')
       .attr('class', 'bar-label')
       .attr('x', d => x(d.label) + x.bandwidth() / 2)
-      .attr('y', d => y(d.value) - 8)
+      .attr('y', d => {
+        const barTop = y(d.value);
+        if (barTop < margin.top + 20) {
+          return barTop + 18;
+        }
+        return barTop - 12;
+      })
       .attr('text-anchor', 'middle')
       .attr('font-size', '1rem')
-      .attr('fill', '#222')
+      .attr('font-weight', 600)
+      .attr('fill', d => {
+        const barTop = y(d.value);
+        // If label is inside the bar, use white; otherwise, use black
+        return barTop < margin.top + 20 ? '#fff' : '#222';
+      })
       .text(d => d.value > 0 ? d.value : '');
 
     // Chart title

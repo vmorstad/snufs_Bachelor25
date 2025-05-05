@@ -9,12 +9,16 @@ import os
 class CVEAPI:
     def __init__(self):
         self.base_url = "https://services.nvd.nist.gov/rest/json/cves/2.0"
-        self.api_key = None  # Add your NVD API key here if you have one
+        self.api_key = "22e61a54-0bb8-4551-8147-3ba44b9de37a"  # Your API key
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }
         if self.api_key:
             self.headers["apiKey"] = self.api_key
+            print("Using NVD API key for authentication")
+        else:
+            print("Warning: No NVD API key found. Please set NVD_API_KEY environment variable.")
+            print("You can get a free API key from: https://nvd.nist.gov/developers/request-an-api-key")
         self.last_request_time = 0
         self.min_request_interval = 6  # seconds between requests to respect rate limiting
         self.max_retries = 3
