@@ -18,30 +18,30 @@ const Home = () => {
   const vulnerabilityData = selectedDevice && selectedDevice.vulnerabilities ? selectedDevice.vulnerabilities : [];
 
   return (
-    <div className="home-container">
-      <div className="search-section">
-        <div className="search-bar">
+    <main className="home-container">
+      <section className="search-section">
+        <form className="search-bar" onSubmit={e => { e.preventDefault(); handleSearch(); }}>
           <input
             type="text"
             placeholder="Enter IP addresses (e.g., 192.168.0.110,192.168.0.220)"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
           />
-          <button onClick={handleSearch} disabled={isLoading}>
+          <button type="submit" disabled={isLoading}>
             {isLoading ? 'Scanning...' : 'Scan Network'}
           </button>
-        </div>
-      </div>
+        </form>
+      </section>
 
-      <div className="content-grid">
+      <section className="content-grid">
         <DeviceList />
         <Vulnerabilities />
-        <div className="heatmap-section">
+        <section className="heatmap-section">
           <h2>Vulnerability Visualization</h2>
           <Visualization data={vulnerabilityData} />
-        </div>
-      </div>
-    </div>
+        </section>
+      </section>
+    </main>
   );
 };
 

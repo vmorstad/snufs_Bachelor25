@@ -11,7 +11,7 @@ const DeviceList = () => {
       return null;
     }
     return (
-      <div>
+      <section>
         <div><strong>Name:</strong> {device.name}</div>
         <div><strong>OS:</strong> {device.os}</div>
         <div><strong>Open Ports:</strong></div>
@@ -23,39 +23,44 @@ const DeviceList = () => {
             </li>
           ))}
         </ul>
-      </div>
+      </section>
     );
   };
 
   return (
-    <div className="devices-section">
+    <section className="devices-section">
       <h2>Device List</h2>
-      <div className="devices-list">
+      <ul className="devices-list">
         {searchResults.length > 0 ? (
           searchResults.map((device, index) => (
-            <div 
+            <li 
               key={index} 
               className={`device-card${selectedDevice?.ip === device.ip ? ' selected' : ''}`}
               onClick={() => handleDeviceSelect(device)}
+              tabIndex={0}
+              role="button"
+              aria-pressed={selectedDevice?.ip === device.ip}
             >
-              <h3>{device.ip} - {device.name || 'Unknown device'}</h3>
+              <header>
+                <h3>{device.ip} - {device.name || 'Unknown device'}</h3>
+              </header>
               {selectedDevice?.ip === device.ip && (
-                <div className="device-content">
+                <section className="device-content">
                   {renderDeviceInfo(device)}
-                </div>
+                </section>
               )}
-            </div>
+            </li>
           ))
         ) : (
-          <div className="device-card empty">
+          <li className="device-card empty">
             <h3>No scanned device</h3>
-            <div className="device-content">
+            <section className="device-content">
               Scan network to see device information
-            </div>
-          </div>
+            </section>
+          </li>
         )}
-      </div>
-    </div>
+      </ul>
+    </section>
   );
 };
 

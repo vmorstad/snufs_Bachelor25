@@ -6,12 +6,12 @@ const Vulnerabilities = () => {
   const { selectedDevice } = useDevices();
 
   const renderCVE = (cve) => (
-    <div className={`vulnerability-card ${cve.severity?.toLowerCase() || 'unknown'}`} key={cve.cve_id}>
-      <div className="vulnerability-header">
+    <article className={`vulnerability-card ${cve.severity?.toLowerCase() || 'unknown'}`} key={cve.cve_id}>
+      <header className="vulnerability-header">
         <h3>{cve.cve_id}</h3>
-        <div className={`severity-badge ${cve.severity?.toLowerCase() || 'unknown'}`}>{cve.severity}</div>
-      </div>
-      <div className="vulnerability-content">
+        <span className={`severity-badge ${cve.severity?.toLowerCase() || 'unknown'}`}>{cve.severity}</span>
+      </header>
+      <section className="vulnerability-content">
         <p><strong>CVSS Score:</strong> {cve.cvss_score}</p>
         <p><strong>Description:</strong> {cve.description}</p>
         <p><strong>Published:</strong> {cve.published ? new Date(cve.published).toLocaleDateString() : '-'}</p>
@@ -19,41 +19,43 @@ const Vulnerabilities = () => {
         {cve.affected_software && (
           <p><strong>Affected Software:</strong> {cve.affected_software}</p>
         )}
-      </div>
-    </div>
+      </section>
+    </article>
   );
 
   const renderCPEGroup = (group) => (
-    <div key={group.cpe} className="cpe-group">
-      <div className="cpe-header">
+    <li key={group.cpe} className="cpe-group">
+      <header className="cpe-header">
         <h3>{group.cpe_title}</h3>
-        <div className="cpe-id">{group.cpe}</div>
-      </div>
+        <span className="cpe-id">{group.cpe}</span>
+      </header>
       {group.cves && group.cves.length > 0 && (
-        group.cves.map(renderCVE)
+        <ul>
+          {group.cves.map(renderCVE)}
+        </ul>
       )}
-    </div>
+    </li>
   );
 
   return (
-    <div className="vulnerabilities-section">
+    <section className="vulnerabilities-section">
       <h2>Device Vulnerabilities</h2>
       {selectedDevice ? (
-        <div className="vulnerabilities-list">
+        <ul className="vulnerabilities-list">
           {selectedDevice.vulnerabilities && selectedDevice.vulnerabilities.length > 0 ? (
             selectedDevice.vulnerabilities.map(renderCPEGroup)
           ) : (
-            <div className="no-vulnerabilities">
+            <li className="no-vulnerabilities">
               No vulnerabilities detected for {selectedDevice.name || selectedDevice.ip}
-            </div>
+            </li>
           )}
-        </div>
+        </ul>
       ) : (
         <div className="no-device-selected">
           Select a device to view its vulnerabilities
         </div>
       )}
-    </div>
+    </section>
   );
 };
 

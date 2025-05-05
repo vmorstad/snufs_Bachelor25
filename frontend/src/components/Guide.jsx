@@ -2,8 +2,10 @@ import React from 'react';
 
 const Guide = () => {
   return (
-    <div className="guide-container">
-      <h1>Network Scanner Guide</h1>
+    <main className="guide-container">
+      <header>
+        <h1>Network Scanner Guide</h1>
+      </header>
 
       <section className="guide-section">
         <h2>Getting Started</h2>
@@ -30,9 +32,9 @@ const Guide = () => {
       <section className="guide-section">
         <h2>Device List</h2>
         <div className="guide-content">
-          <div className="guide-image">
+          <figure className="guide-image">
             <img src={process.env.PUBLIC_URL + '/images/device-list.png'} alt="Device List showing scanned network devices" />
-          </div>
+          </figure>
           <div className="guide-text">
             <p>The Device List shows all devices that have been found through scanning.</p>
             <p>When you tap on a device, it expands to show more information related to that specific device — such as the operating system (OS) and any open ports.</p>
@@ -43,9 +45,9 @@ const Guide = () => {
       <section className="guide-section">
         <h2>Device Vulnerabilities</h2>
         <div className="guide-content">
-          <div className="guide-image">
+          <figure className="guide-image">
             <img src={process.env.PUBLIC_URL + '/images/vulnerabilities.png'} alt="Device Vulnerabilities showing security risks" />
-          </div>
+          </figure>
           <div className="guide-text">
             <p>This section gives you an overview of known security risks for the selected device.</p>
             <p>When you click on a device, you'll see a list of its vulnerabilities, including:</p>
@@ -71,9 +73,9 @@ const Guide = () => {
       <section className="guide-section">
         <h2>Vulnerability Heatmap</h2>
         <div className="guide-content">
-          <div className="guide-image">
+          <figure className="guide-image">
             <img src={process.env.PUBLIC_URL + '/images/heatmap.png'} alt="Vulnerability Heatmap showing security risk distribution" />
-          </div>
+          </figure>
           <div className="guide-text">
             <p>The Heatmap gives you a visual overview of all vulnerabilities found on the selected device.</p>
             <p>This makes it easy to spot which devices have the most or most serious issues at a glance.</p>
@@ -89,7 +91,7 @@ const Guide = () => {
           </div>
         </div>
       </section>
-    </div>
+    </main>
   );
 };
 

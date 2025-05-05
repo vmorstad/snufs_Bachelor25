@@ -26,8 +26,8 @@ const Visualization = ({ data }) => {
   const barData = getSeverityCounts(data);
 
   return (
-    <div className="visualization-container">
-      <div className="visualization-toggle">
+    <section className="visualization-container">
+      <nav className="visualization-toggle" aria-label="Visualization Toggle">
         <button
           className={view === 'heatmap' ? 'active' : ''}
           onClick={() => setView('heatmap')}
@@ -40,13 +40,13 @@ const Visualization = ({ data }) => {
         >
           Barchart
         </button>
-      </div>
+      </nav>
       {view === 'heatmap' ? (
         <Heatmap data={data} />
       ) : (
         <Barchart data={barData} />
       )}
-    </div>
+    </section>
   );
 };
 
