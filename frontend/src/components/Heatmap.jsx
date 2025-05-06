@@ -3,8 +3,8 @@ import * as d3 from 'd3';
 import { useDevices } from '../context/DeviceContext';
 import '../styles/Heatmap.css';
 
-const margin = { top: 50, right: 30, bottom: 110, left: 320 };
-const width = 900;
+const margin = { top: 50, right: 30, bottom: 110, left: 450 };
+const width = 1200;
 const baseHeight = 420;
 const severities = ['unknown', 'low', 'medium', 'high', 'critical'];
 const severityLabels = {
