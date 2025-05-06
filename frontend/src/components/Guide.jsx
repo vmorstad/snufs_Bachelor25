@@ -52,7 +52,7 @@ const Guide = () => {
             <p>This section gives you an overview of known security risks for the selected device.</p>
             <p>When you click on a device, you'll see a list of its vulnerabilities, including:</p>
             <ul>
-              <li><strong>CPE (Common Platform Enumeration):</strong> Identifies the OS or software, including the version.</li>
+              <li><strong>CPE (Common Platform Enumeration):</strong> Gives a unique identifier for an OS, or software with its version.</li>
               <li><strong>CVE (Common Vulnerabilities and Exposures):</strong> A unique ID for each known vulnerability.</li>
               <li><strong>CVSS (Common Vulnerability Scoring System):</strong> A score that rates how serious the vulnerability is.</li>
             </ul>
@@ -71,7 +71,7 @@ const Guide = () => {
       </section>
 
       <section className="guide-section">
-        <h2>Vulnerability Heatmap</h2>
+        <h2>Vulnerability Visualization</h2>
         <div className="guide-content">
           <figure className="guide-image">
             <img src={process.env.PUBLIC_URL + '/images/heatmap.png'} alt="Vulnerability Heatmap showing security risk distribution" />
@@ -79,6 +79,7 @@ const Guide = () => {
           <div className="guide-text">
             <p>The Heatmap gives you a visual overview of all vulnerabilities found on the selected device.</p>
             <p>This makes it easy to spot which devices have the most or most serious issues at a glance.</p>
+            <p>You can choose between either seeing a Heatmap, or a Bar chart.</p>
             <div className="heatmap-legend">
               <h3>Color Intensity Guide:</h3>
               <ul>
