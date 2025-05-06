@@ -24,38 +24,12 @@ class CVEAPI:
         self.max_retries = 3
         self.retry_delay = 5  # seconds between retries
         
-        # Initialize cache directory and file
-        self.cache_dir = os.path.join(os.path.dirname(__file__), 'cache')
-        os.makedirs(self.cache_dir, exist_ok=True)
-        self.cve_cache_file = os.path.join(self.cache_dir, 'cve_cache.json')
-        
-        # Initialize cache
-        self.cve_cache = {}
-        self.load_cache()
-        
         # Critical services to prioritize
         self.critical_services = {
             'ssh', 'rdp', 'smb', 'http', 'https', 'ftp', 'telnet',
             'microsoft-ds', 'msrpc', 'netbios-ssn', 'ldap', 'mysql',
             'postgresql', 'oracle', 'mssql', 'vnc', 'snmp'
         }
-
-    def load_cache(self):
-        """Load cache from disk if it exists"""
-        try:
-            if os.path.exists(self.cve_cache_file):
-                with open(self.cve_cache_file, 'r') as f:
-                    self.cve_cache = json.load(f)
-        except Exception as e:
-            print(f"Error loading CVE cache: {e}")
-
-    def save_cache(self):
-        """Save cache to disk"""
-        try:
-            with open(self.cve_cache_file, 'w') as f:
-                json.dump(self.cve_cache, f)
-        except Exception as e:
-            print(f"Error saving CVE cache: {e}")
 
     def search_cves(self, cpe_name, min_severity='high', max_results=5):
         """
@@ -68,11 +42,6 @@ class CVEAPI:
         if not self._validate_cpe(cpe_name):
             print(f"Invalid CPE format: {cpe_name}")
             return []
-
-        # Check cache first
-        cache_key = f"{cpe_name}:{min_severity}:{max_results}"
-        if cache_key in self.cve_cache:
-            return self.cve_cache[cache_key]
 
         for attempt in range(self.max_retries):
             try:
@@ -102,16 +71,9 @@ class CVEAPI:
                 self.last_request_time = time.time()
                 
                 if response.status_code == 200:
-                    cves = self._parse_cve_response(response.json(), min_severity, max_results)
-                    # Cache the results
-                    self.cve_cache[cache_key] = cves
-                    self.save_cache()
-                    return cves
+                    return self._parse_cve_response(response.json(), min_severity, max_results)
                 elif response.status_code == 404:
                     print(f"No CVEs found for CPE: {cpe_name}")
-                    # Cache empty result
-                    self.cve_cache[cache_key] = []
-                    self.save_cache()
                     return []
                 elif response.status_code == 429:
                     print("Rate limited by NVD API. Waiting before retry...")
