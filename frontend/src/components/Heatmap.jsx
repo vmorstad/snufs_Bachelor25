@@ -137,22 +137,18 @@ const Heatmap = () => {
       .enter()
       .append('g')
       .attr('class', 'cpe-label-group')
-      .attr('transform', (d, i) => `translate(${margin.left - 16},${rowYs[i] + rowHeights[i] / 2})`)
+      .attr('transform', (d, i) => `translate(${margin.left - 12},${rowYs[i] + rowHeights[i] / 2})`)
       .each(function (d, i) {
-        const lines = cpeLabelLines[i];
-        lines.forEach((line, idx) => {
-          d3.select(this)
-            .append('text')
-            .attr('class', 'cpe-label')
-            .attr('x', 0)
-            .attr('y', idx * 18 + (lines.length === 1 ? 6 : -2 + idx * 18))
-            .attr('text-anchor', 'end')
-            .attr('font-size', '0.95rem')
-            .attr('fill', '#333')
-            .attr('style', 'cursor: pointer;')
-            .text(line);
-        });
-        // Tooltip: show the full cpeTitles[i] (original title)
+        d3.select(this)
+          .append('text')
+          .attr('class', 'cpe-label')
+          .attr('x', 0)
+          .attr('y', 6)
+          .attr('text-anchor', 'end')
+          .attr('font-size', '1rem')
+          .attr('font-weight', 500)
+          .attr('fill', '#333')
+          .text(cpeTitles[i]);
         d3.select(this).append('title').text(cpeTitles[i]);
       });
 
