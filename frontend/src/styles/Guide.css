@@ -34,13 +34,15 @@
   width: 100%;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid #e5e7eb;
 }
 
 .guide-image img {
   width: 100%;
   height: auto;
   display: block;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
 }
 
 .guide-text {

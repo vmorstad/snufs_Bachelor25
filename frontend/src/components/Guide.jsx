@@ -73,10 +73,11 @@ const Guide = () => {
       <section className="guide-section">
         <h2>Vulnerability Visualization</h2>
         <div className="guide-content">
-          <figure className="guide-image">
-            <img src={process.env.PUBLIC_URL + '/images/heatmap.png'} alt="Vulnerability Heatmap showing security risk distribution" />
+          <figure className="guide-image" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2rem', alignItems: 'center' }}>
+            <img src={process.env.PUBLIC_URL + '/images/heatmap.png'} alt="Vulnerability Heatmap showing security risk distribution" style={{ width: '100%' }} />
+            <img src={process.env.PUBLIC_URL + '/images/barchart.png'} alt="Vulnerability Bar Chart showing security risk distribution" style={{ width: '100%' }} />
           </figure>
-          <div className="guide-text">
+          <div className="guide-text" style={{ flex: 1 }}>
             <p>The Heatmap gives you a visual overview of all vulnerabilities found on the selected device.</p>
             <p>This makes it easy to spot which devices have the most or most serious issues at a glance.</p>
             <p>You can choose between either seeing a Heatmap, or a Bar chart.</p>
