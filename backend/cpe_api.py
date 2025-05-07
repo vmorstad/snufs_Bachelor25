@@ -7,6 +7,10 @@ import json
 import os
 
 class CPEAPI:
+    """
+    Handles CPE (Common Platform Enumeration) lookups and vulnerability analysis
+    for devices and services using the NVD CPE and CVE APIs.
+    """
     def __init__(self):
         self.cve_api = CVEAPI()
         self.cpe_base_url = "https://services.nvd.nist.gov/rest/json/cpes/2.0"
@@ -22,7 +26,7 @@ class CPEAPI:
 
     def search_cpes(self, search_term):
         """
-        Search for CPEs using NVD's CPE API
+        Search for CPEs using NVD's CPE API.
         """
         try:
             # Respect rate limiting
@@ -115,8 +119,8 @@ class CPEAPI:
 
     def _get_service_priority(self, port_info):
         """
-        Get priority score for a service
-        Higher score means more important to check
+        Get priority score for a service.
+        Higher score means more important to check.
         """
         # Handle both string and dictionary port info
         if isinstance(port_info, dict):
@@ -142,7 +146,8 @@ class CPEAPI:
 
     def analyze_device_vulnerabilities(self, device_info):
         """
-        Analyze vulnerabilities for a device with optimized CVE lookup and time limit
+        Analyze vulnerabilities for a device with optimized CVE lookup and time limit.
+        Returns a list of vulnerability dictionaries grouped by CPE.
         """
         vulnerabilities = []
         start_time = time.time()
@@ -217,10 +222,17 @@ cpe_api = CPEAPI()
 
 # Export the function
 def analyze_device_vulnerabilities(device_info):
+    """
+    Analyze vulnerabilities for a device using the global CPEAPI instance.
+    Returns a list of vulnerability dictionaries grouped by CPE.
+    """
     return cpe_api.analyze_device_vulnerabilities(device_info)
 
 def scan_ports(ip):
-    # Use -A -O -sV for best detection
+    """
+    Scan all ports on a device using Nmap with aggressive detection.
+    Returns a ist of lines from Nmap output.
+    """
     nmap_cmd = ["nmap", "-A", "-O", "-sV", "-p-", ip]
     result = subprocess.run(nmap_cmd, capture_output=True, text=True)
     return result.stdout.splitlines() 

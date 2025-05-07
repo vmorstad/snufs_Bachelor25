@@ -11,6 +11,10 @@ import mimetypes
 
 # Add logging to file
 def setup_logging():
+    """
+    Redirect stdout and stderr to a log file for debugging and auditing.
+    Creates a 'logs' directory if it does not exist.
+    """
     log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
     os.makedirs(log_dir, exist_ok=True)
     log_file = os.path.join(log_dir, 'server.log')
@@ -18,7 +22,14 @@ def setup_logging():
     sys.stderr = sys.stdout
 
 class MyHandler(BaseHTTPRequestHandler):
+    """
+    HTTP request handler for the vulnerability scanner API and static frontend files.
+    Handles GET requests for both API endpoints and frontend assets.
+    """
     def do_GET(self):
+        """
+        Handle GET requests. Serves the /scan API endpoint or static frontend files.
+        """
         try:
             p = urlparse(self.path)
             # Serve API endpoint
@@ -53,7 +64,10 @@ class MyHandler(BaseHTTPRequestHandler):
             return self._reply(500, {"error": "Internal server error"})
 
     def serve_frontend(self, path):
-        # Always use the real build directory in your project
+        """
+        Serves static frontend files from the React build directory.
+        Maps / to /index.html and prevents directory traversal.
+        """
         build_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'frontend', 'build')
         # Map / to /index.html
         if path == '/' or path == '':
@@ -84,6 +98,10 @@ class MyHandler(BaseHTTPRequestHandler):
             self.send_error(500)
 
     def _reply(self, code, data):
+        """
+        Send a JSON response with the given HTTP status code and data.
+        Adds CORS headers for frontend-backend communication.
+        """
         try:
             self.send_response(code)
             self.send_header("Content-Type", "application/json")

@@ -7,6 +7,10 @@ import logging
 import os
 
 class CVEAPI:
+    """
+    Handles communication with the NVD CVE API to search for vulnerabilities
+    based on CPE names. Implements rate limiting and retries for reliability.
+    """
     def __init__(self):
         self.base_url = "https://services.nvd.nist.gov/rest/json/cves/2.0"
         self.api_key = "22e61a54-0bb8-4551-8147-3ba44b9de37a"  # Your API key
@@ -33,11 +37,13 @@ class CVEAPI:
 
     def search_cves(self, cpe_name, min_severity='high', max_results=5):
         """
-        Search for CVEs related to a specific CPE name with filtering
+        Search for CVEs for a given CPE name using the NVD API.
         Args:
-            cpe_name: CPE to search for
-            min_severity: Minimum severity to include ('critical', 'high', 'medium', 'low')
-            max_results: Maximum number of CVEs to return per CPE
+            cpe_name (str): The CPE name to search for.
+            min_severity (str): Minimum severity to include ('low', 'medium', 'high', 'critical').
+            max_results (int): Maximum number of results to return.
+        Returns:
+            list: List of vulnerability dictionaries.
         """
         if not self._validate_cpe(cpe_name):
             print(f"Invalid CPE format: {cpe_name}")
@@ -97,8 +103,12 @@ class CVEAPI:
 
     def _validate_cpe(self, cpe_name):
         """
-        Validate CPE format
+        Validate CPE format.
         Format should be: cpe:2.3:a:vendor:product:version:*:*:*:*:*:*:*
+        Args:
+            cpe_name (str): The CPE name to validate.
+        Returns:
+            bool: True if valid, False otherwise.
         """
         parts = cpe_name.split(':')
         if len(parts) != 13:
@@ -111,7 +121,13 @@ class CVEAPI:
 
     def _parse_cve_response(self, response_data, min_severity='high', max_results=5):
         """
-        Parse and filter the NVD API response
+        Parse and filter the NVD API response.
+        Args:
+            response_data (dict): The JSON response from the NVD API.
+            min_severity (str): Minimum severity to include.
+            max_results (int): Maximum number of results to return.
+        Returns:
+            list: List of vulnerability dictionaries.
         """
         vulnerabilities = []
         
@@ -166,7 +182,13 @@ class CVEAPI:
         return sorted_vulns[:max_results]
 
     def _severity_to_number(self, severity):
-        """Convert severity to a number for sorting"""
+        """
+        Convert severity string to a number for sorting.
+        Args:
+            severity (str): Severity string ('critical', 'high', etc.)
+        Returns:
+            int: Numeric value for sorting.
+        """
         severity_map = {
             'critical': 4,
             'high': 3,
@@ -177,7 +199,13 @@ class CVEAPI:
         return severity_map.get(severity.lower(), 0)
 
     def _get_severity(self, cvss_score):
-        """Convert CVSS score to severity level"""
+        """
+        Convert CVSS score to severity level.
+        Args:
+            cvss_score (float or None): CVSS base score.
+        Returns:
+            str: Severity string ('critical', 'high', etc.)
+        """
         if cvss_score is None:
             return "unknown"
         elif cvss_score >= 9.0:

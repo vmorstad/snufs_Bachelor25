@@ -5,26 +5,15 @@ import re
 
 def scan_device(ip_address):
     """
-    Perform a targeted scan of a device to get open ports, services, and OS information.
-    Uses a more efficient scanning strategy to reduce scan time.
-    
-    Args:
-        ip_address (str): IP address to scan
-        
+    Scan a device using Nmap to identify open ports, running services, and operating system.
     Returns:
-        dict: Dictionary containing:
-            - ports: List of open ports with service info
-            - os: OS information if detected
+        'ports': List of dicts with port, state, service, version,
+        'os': Detected operating system as a string
+
+    Nmap is called as a subprocess; errors are caught and logged.
     """
     try:
-        # Run nmap with optimized flags:
-        # -sV: Service detection
-        # -O: OS detection
-        # -T4: Aggressive timing template
-        # -p-: Scan all ports
-        # --min-rate 1000: Send at least 1000 packets per second
-        # --max-retries 1: Reduce retries
-        # --version-intensity 5: Balance between speed and accuracy
+
         cmd = f"nmap -sV -O -T4 -p- --min-rate 1000 --max-retries 1 --version-intensity 5 {ip_address}"
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         

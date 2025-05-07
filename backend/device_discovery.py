@@ -4,8 +4,9 @@ import subprocess
 
 def scan_network(network_range):
     """
-    Scan the network for active devices using ARP
-    Returns a list of dictionaries containing IP and MAC addresses
+    Scan the network for active devices using ARP requests.
+    Args: network_range (str). The network range to scan (e.g., '192.168.1.0/24')
+    Returns a list of dictionaries containing IP and MAC addresses of discovered devices.
     """
     arp = ARP(pdst=network_range)
     ether = Ether(dst="ff:ff:ff:ff:ff:ff")
@@ -20,7 +21,11 @@ def scan_network(network_range):
     return devices
 
 def normalize_cpe(cpe_string):
-    """Normalize CPE strings to the format expected by the CVE database"""
+    """
+    Normalize CPE strings to the format expected by the CVE database.
+    Args cpe_string (str). The CPE string to normalize.
+    Returns str or None. Normalized CPE string or None if invalid.
+    """
     if not cpe_string:
         return None
         
@@ -48,7 +53,7 @@ def normalize_cpe(cpe_string):
 
 def detect_os(ip_address):
     """
-    Detect the operating system of a device using Nmap
+    Detect the operating system of a device using Nmap.
     """
     try:
         nmap_result = subprocess.check_output([
@@ -68,7 +73,7 @@ def detect_os(ip_address):
 
 def parse_os_info(nmap_output):
     """
-    Parse OS information from Nmap output
+    Parse OS information from Nmap output.
     """
     os_lines = [line for line in nmap_output.split('\n') if 'OS details:' in line or 'OS CPE:' in line]
     if not os_lines:
@@ -93,8 +98,7 @@ def parse_os_info(nmap_output):
 
 def get_device_name(ip_address):
     """
-    Get the device name using multiple methods
-    Returns the hostname if found, None otherwise
+    Get the device name using multiple methods (DNS, Nmap, NetBIOS).
     """
     try:
         # Try DNS lookup first
@@ -149,7 +153,7 @@ def get_device_name(ip_address):
 
 def scan_ports(ip_address):
     """
-    Basic port scanning with service detection
+    Basic port scanning with service detection using Nmap.
     """
     try:
         nmap_output = subprocess.check_output([
