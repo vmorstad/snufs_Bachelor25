@@ -53,11 +53,8 @@ class MyHandler(BaseHTTPRequestHandler):
             return self._reply(500, {"error": "Internal server error"})
 
     def serve_frontend(self, path):
-        # Find the build directory (works for both PyInstaller and normal run)
-        if hasattr(sys, '_MEIPASS'):
-            build_dir = os.path.join(sys._MEIPASS, 'frontend', 'build')
-        else:
-            build_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'frontend', 'build')
+        # Always use the real build directory in your project
+        build_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'frontend', 'build')
         # Map / to /index.html
         if path == '/' or path == '':
             path = '/index.html'
