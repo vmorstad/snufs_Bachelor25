@@ -1,34 +1,34 @@
 import json
 import traceback
+import sys
+import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 from device_discovery import get_device_name
 from port_scan import scan_device
 from cpe_api import analyze_device_vulnerabilities
+import mimetypes
+
+# Add logging to file
+def setup_logging():
+    log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
+    os.makedirs(log_dir, exist_ok=True)
+    log_file = os.path.join(log_dir, 'server.log')
+    sys.stdout = open(log_file, 'a')
+    sys.stderr = sys.stdout
 
 class MyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             p = urlparse(self.path)
-            if p.path == "/":
-                return self._reply(200, {
-                    "status": "ok",
-                    "message": "Vulnerability Scanner API",
-                    "endpoints": {
-                        "/scan": "Scan devices for vulnerabilities",
-                        "params": {
-                            "auth_ips": "Comma-separated list of IP addresses to scan"
-                        }
-                    }
-                })
-            elif p.path == "/scan":
+            # Serve API endpoint
+            if p.path == "/scan":
                 qs = parse_qs(p.query)
                 auth = qs.get("auth_ips", [None])[0]
                 if not auth:
                     return self._reply(400, {"error": "No authorized IPs provided"})
                 devices = []
                 for ip in [x.strip() for x in auth.split(",") if x.strip()]:
-                    # Get device info using the new scan_device function
                     scan_result = scan_device(ip)
                     device = {
                         "ip": ip,
@@ -44,16 +44,47 @@ class MyHandler(BaseHTTPRequestHandler):
                         device["vulnerabilities"] = []
                     devices.append(device)
                 return self._reply(200, devices)
+            # Serve static frontend files
             else:
-                return self._reply(404, {
-                    "error": "Not found",
-                    "path": p.path,
-                    "message": "Available endpoints: /, /scan"
-                })
+                self.serve_frontend(p.path)
         except Exception as e:
             print(f"Error handling request: {e}")
             print(traceback.format_exc())
             return self._reply(500, {"error": "Internal server error"})
+
+    def serve_frontend(self, path):
+        # Find the build directory (works for both PyInstaller and normal run)
+        if hasattr(sys, '_MEIPASS'):
+            build_dir = os.path.join(sys._MEIPASS, 'frontend', 'build')
+        else:
+            build_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'frontend', 'build')
+        # Map / to /index.html
+        if path == '/' or path == '':
+            path = '/index.html'
+        file_path = os.path.normpath(os.path.join(build_dir, path.lstrip('/')))
+        # Prevent directory traversal
+        if not file_path.startswith(build_dir):
+            self.send_error(403)
+            return
+        if not os.path.exists(file_path):
+            # For client-side routing, serve index.html
+            file_path = os.path.join(build_dir, 'index.html')
+        # Guess content type
+        content_type, _ = mimetypes.guess_type(file_path)
+        if not content_type:
+            content_type = 'application/octet-stream'
+        try:
+            with open(file_path, 'rb') as f:
+                content = f.read()
+            self.send_response(200)
+            self.send_header('Content-Type', content_type)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(content)
+        except Exception as e:
+            print(f"Error serving frontend file: {e}")
+            print(traceback.format_exc())
+            self.send_error(500)
 
     def _reply(self, code, data):
         try:
@@ -70,5 +101,17 @@ class MyHandler(BaseHTTPRequestHandler):
             print(traceback.format_exc())
 
 if __name__ == "__main__":
-    print("Starting server on port 8000...")
-    HTTPServer(("", 8000), MyHandler).serve_forever()
+    try:
+        setup_logging()
+        print("Starting server on port 8000...")
+        print(f"Current working directory: {os.getcwd()}")
+        print(f"Python executable: {sys.executable}")
+        print(f"Python version: {sys.version}")
+
+        server = HTTPServer(("", 8000), MyHandler)
+        print("Server initialized successfully")
+        server.serve_forever()
+    except Exception as e:
+        print(f"Failed to start server: {e}")
+        print(traceback.format_exc())
+        input("Press Enter to exit...")  # Keep window open if there's an error
