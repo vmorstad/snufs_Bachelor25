@@ -39,9 +39,12 @@ if errorlevel 1 (
 )
 
 echo Creating executable...
-pyinstaller --noconfirm --onefile --windowed ^
+pyinstaller --noconfirm --onefile ^
     --add-data "frontend/build;frontend/build" ^
     --add-data "backend;backend" ^
+    --hidden-import=device_discovery ^
+    --hidden-import=port_scan ^
+    --hidden-import=cpe_api ^
     --name "NetworkVulnerabilityScanner" ^
     backend/server.py
 
@@ -53,8 +56,8 @@ if errorlevel 1 (
 
 echo.
 echo === Build Completed Successfully! ===
-echo The standalone executable is in the 'dist' directory
-echo Users can simply double-click 'NetworkVulnerabilityScanner.exe' to run the application
+echo The executable is in the 'dist' directory
+echo Double-click NetworkVulnerabilityScanner.exe to run the application
 dir dist
 pause
 exit /b 0 
