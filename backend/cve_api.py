@@ -11,9 +11,9 @@ class CVEAPI:
     Handles communication with the NVD CVE API to search for vulnerabilities
     based on CPE names. Implements rate limiting and retries for reliability.
     """
-    def __init__(self):
+    def __init__(self, api_key=None):
         self.base_url = "https://services.nvd.nist.gov/rest/json/cves/2.0"
-        self.api_key = "22e61a54-0bb8-4551-8147-3ba44b9de37a"  # Your API key
+        self.api_key = api_key
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }

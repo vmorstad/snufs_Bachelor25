@@ -4,7 +4,7 @@ import sys
 import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
-from device_discovery import get_device_name
+from device_discovery import get_device_name, detect_os
 from port_scan import scan_device
 from cpe_api import analyze_device_vulnerabilities
 import mimetypes
@@ -40,11 +40,17 @@ class MyHandler(BaseHTTPRequestHandler):
                     return self._reply(400, {"error": "No authorized IPs provided"})
                 devices = []
                 for ip in [x.strip() for x in auth.split(",") if x.strip()]:
-                    scan_result = scan_device(ip)
+                    # First get device name and OS info
+                    name = get_device_name(ip)
+                    os_info = detect_os(ip)
+                    
+                    # Then scan ports based on OS
+                    scan_result = scan_device(ip, os_info)
+                    
                     device = {
                         "ip": ip,
-                        "name": get_device_name(ip),
-                        "os": scan_result["os"],
+                        "name": name,
+                        "os": os_info,
                         "ports": scan_result["ports"]
                     }
                     try:
