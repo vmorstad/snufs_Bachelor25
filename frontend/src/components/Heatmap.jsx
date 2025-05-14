@@ -34,53 +34,51 @@ const Heatmap = () => {
   const { selectedDevice } = useDevices();
   const svgRef = useRef();
 
-  // Memoize cpeTitles, cpeUniqueLabels, cpeLabelLines, rowHeights, rowYs, and matrix
-  const { cpeTitles, cpeUniqueLabels, cpeLabelLines, rowHeights, rowYs, matrix } = useMemo(() => {
+  // Memoize service labels, label lines, rowHeights, rowYs, and matrix
+  const { serviceLabels, labelLines, rowHeights, rowYs, matrix } = useMemo(() => {
     let matrix = [];
-    let cpeTitles = [];
-    let cpeUniqueLabels = [];
-    let cpeLabelLines = [];
+    let serviceLabels = [];
+    let labelLines = [];
     let rowHeights = [];
     let rowYs = [];
     const minCellHeight = 32;
     const lineHeight = 18;
     if (selectedDevice && selectedDevice.vulnerabilities) {
-      const nonEmptyGroups = selectedDevice.vulnerabilities.filter(group => group.cves && group.cves.length > 0);
-      cpeTitles = nonEmptyGroups.map(group => group.cpe_title);
-      cpeUniqueLabels = nonEmptyGroups.map((group, idx) => {
-        let unique = group.cpe;
-        let port = group.port || '';
-        let version = group.version || '';
-        let label = group.cpe_title;
-        if (port) label += ` (Port ${port})`;
-        else if (version) label += ` (v${version})`;
-        else label += ` (${unique.split(':').slice(2, 5).join(':')})`;
-        return label;
-      });
-      cpeLabelLines = cpeUniqueLabels.map(label => wrapText(truncateText(label, 18), 10));
-      rowHeights = cpeLabelLines.map(lines => Math.max(minCellHeight, lines.length * lineHeight + 8));
+      // Group vulnerabilities by source
+      const groupedVulns = selectedDevice.vulnerabilities.reduce((acc, vuln) => {
+        const source = vuln.source || 'unknown';
+        if (!acc[source]) {
+          acc[source] = [];
+        }
+        acc[source].push(vuln);
+        return acc;
+      }, {});
+
+      serviceLabels = Object.keys(groupedVulns);
+      labelLines = serviceLabels.map(label => wrapText(truncateText(label, 18), 10));
+      rowHeights = labelLines.map(lines => Math.max(minCellHeight, lines.length * lineHeight + 8));
       // Calculate cumulative Y positions for each row
       rowYs = rowHeights.reduce((acc, h, i) => {
         if (i === 0) return [margin.top];
         acc.push(acc[i - 1] + rowHeights[i - 1]);
         return acc;
       }, []);
-      matrix = nonEmptyGroups.flatMap((group, rowIdx) => {
+      matrix = serviceLabels.flatMap((service, rowIdx) => {
         const counts = { critical: 0, high: 0, medium: 0, low: 0, unknown: 0 };
-        (group.cves || []).forEach(cve => {
-          const sev = (cve.severity || 'unknown').toLowerCase();
+        groupedVulns[service].forEach(vuln => {
+          const sev = (vuln.severity || 'unknown').toLowerCase();
           if (counts[sev] !== undefined) counts[sev]++;
           else counts.unknown++;
         });
         return severities.map((sev, colIdx) => ({
-          cpeIdx: rowIdx,
+          serviceIdx: rowIdx,
           severity: sev,
           count: counts[sev],
-          cpe: group.cpe_title,
+          service: service,
         }));
       });
     }
-    return { cpeTitles, cpeUniqueLabels, cpeLabelLines, rowHeights, rowYs, matrix };
+    return { serviceLabels, labelLines, rowHeights, rowYs, matrix };
   }, [selectedDevice]);
 
   // Dynamically adjust SVG height based on sum of all row heights
@@ -89,7 +87,7 @@ const Heatmap = () => {
   useEffect(() => {
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
-    if (!cpeTitles.length) return;
+    if (!serviceLabels.length) return;
 
     const cellWidth = (width - margin.left - margin.right) / severities.length;
 
@@ -99,9 +97,9 @@ const Heatmap = () => {
       .enter()
       .append('rect')
       .attr('x', d => margin.left + severities.indexOf(d.severity) * cellWidth)
-      .attr('y', d => rowYs[d.cpeIdx])
+      .attr('y', d => rowYs[d.serviceIdx])
       .attr('width', cellWidth - 4)
-      .attr('height', d => rowHeights[d.cpeIdx] - 4)
+      .attr('height', d => rowHeights[d.serviceIdx] - 4)
       .attr('fill', d => colorScale(d.count))
       .attr('stroke', '#fff')
       .attr('stroke-width', 2)
@@ -115,7 +113,7 @@ const Heatmap = () => {
         d3.select(this).attr('stroke', '#fff').attr('stroke-width', 2);
       })
       .append('title')
-      .text(d => `${d.cpe}\n${severityLabels[d.severity]}: ${d.count} CVEs`);
+      .text(d => `${d.service}\n${severityLabels[d.severity]}: ${d.count} CVEs`);
 
     // Add count text (centered, only if count > 0)
     svg.selectAll('text.cell-count')
@@ -124,32 +122,32 @@ const Heatmap = () => {
       .append('text')
       .attr('class', 'cell-count')
       .attr('x', d => margin.left + severities.indexOf(d.severity) * cellWidth + cellWidth / 2)
-      .attr('y', d => rowYs[d.cpeIdx] + rowHeights[d.cpeIdx] / 2 + 6)
+      .attr('y', d => rowYs[d.serviceIdx] + rowHeights[d.serviceIdx] / 2 + 6)
       .attr('text-anchor', 'middle')
       .attr('font-size', '1.1rem')
       .attr('font-weight', 600)
       .attr('fill', d => d.count > 0 ? '#222' : '#bbb')
       .text(d => d.count > 0 ? d.count : '');
 
-    // Y axis (CPE group) with improved wrapping, truncation, and tooltip
-    svg.selectAll('g.cpe-label-group')
-      .data(cpeUniqueLabels)
+    // Y axis (Service group) with improved wrapping, truncation, and tooltip
+    svg.selectAll('g.service-label-group')
+      .data(labelLines)
       .enter()
       .append('g')
-      .attr('class', 'cpe-label-group')
+      .attr('class', 'service-label-group')
       .attr('transform', (d, i) => `translate(${margin.left - 12},${rowYs[i] + rowHeights[i] / 2})`)
       .each(function (d, i) {
         d3.select(this)
           .append('text')
-          .attr('class', 'cpe-label')
+          .attr('class', 'service-label')
           .attr('x', 0)
           .attr('y', 6)
           .attr('text-anchor', 'end')
           .attr('font-size', '1rem')
           .attr('font-weight', 500)
           .attr('fill', '#333')
-          .text(cpeTitles[i]);
-        d3.select(this).append('title').text(cpeTitles[i]);
+          .text(serviceLabels[i]);
+        d3.select(this).append('title').text(serviceLabels[i]);
       });
 
     // X axis (Severity)
@@ -199,13 +197,13 @@ const Heatmap = () => {
       .attr('font-size', '0.9rem')
       .attr('fill', '#333')
       .text('Severity of CVEs');
-  }, [matrix, cpeTitles, rowHeights, rowYs]);
+  }, [serviceLabels, labelLines, rowHeights, rowYs, matrix]);
 
   return (
     <section className="heatmap-section">
       <h2>Vulnerability Heatmap</h2>
       {selectedDevice ? (
-        cpeTitles.length > 0 ? (
+        serviceLabels.length > 0 ? (
           <svg ref={svgRef} width={width} height={dynamicHeight} />
         ) : (
           <div className="no-heatmap">No vulnerabilities to visualize for this device.</div>

@@ -6,27 +6,31 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 from device_discovery import get_device_name, detect_os
 from port_scan import scan_device
-from cpe_api import analyze_device_vulnerabilities
+from cpe_api import get_device_cpes
+from cve_api import CVEAPI
 import mimetypes
 
-# Add logging to file
-def setup_logging():
-    """
-    Redirect stdout and stderr to a log file for debugging and auditing.
-    Creates a 'logs' directory if it does not exist.
-    """
-    log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
-    os.makedirs(log_dir, exist_ok=True)
-    log_file = os.path.join(log_dir, 'server.log')
-    sys.stdout = open(log_file, 'a')
-    sys.stderr = sys.stdout
+# Force flush all prints
+sys.stdout.reconfigure(line_buffering=True)
+
+# Create global CVE API instance
+cve_api = CVEAPI()
 
 class MyHandler(BaseHTTPRequestHandler):
     """
     HTTP request handler for the vulnerability scanner API and static frontend files.
     Handles GET requests for both API endpoints and frontend assets.
     """
+    def log_message(self, format, *args):
+        """Override to force flush logging"""
+        sys.stderr.write("%s - - [%s] %s\n" %
+                        (self.address_string(),
+                         self.log_date_time_string(),
+                         format % args))
+        sys.stderr.flush()
+
     def do_GET(self):
+        print(f"[DEBUG] Received GET request: {self.path}", flush=True)
         """
         Handle GET requests. Serves the /scan API endpoint or static frontend files.
         """
@@ -37,27 +41,52 @@ class MyHandler(BaseHTTPRequestHandler):
                 qs = parse_qs(p.query)
                 auth = qs.get("auth_ips", [None])[0]
                 if not auth:
+                    print("[DEBUG] No authorized IPs provided", flush=True)
                     return self._reply(400, {"error": "No authorized IPs provided"})
+                
                 devices = []
                 for ip in [x.strip() for x in auth.split(",") if x.strip()]:
+                    print(f"[DEBUG] Processing device: {ip}", flush=True)
                     # First get device name and OS info
                     name = get_device_name(ip)
-                    os_info = detect_os(ip)
+                    print(f"[DEBUG] Device name: {name}", flush=True)
+                    
+                    os_info_dict = detect_os(ip)
+                    os_info = os_info_dict["os"]
+                    os_normalized = os_info_dict["os_normalized"]
+                    print(f"[DEBUG] OS info: {os_info}, Normalized: {os_normalized}", flush=True)
                     
                     # Then scan ports based on OS
                     scan_result = scan_device(ip, os_info)
+                    print(f"[DEBUG] Scan result ports: {scan_result['ports']}", flush=True)
                     
                     device = {
                         "ip": ip,
                         "name": name,
                         "os": os_info,
+                        "os_normalized": os_normalized,
                         "ports": scan_result["ports"]
                     }
                     try:
-                        device["vulnerabilities"] = analyze_device_vulnerabilities(device)
+                        print(f"[DEBUG] Getting CPEs for {ip}", flush=True)
+                        cpe_results = get_device_cpes(device)
+                        device["cpes"] = []
+                        device["vulnerabilities"] = []
+                        for c in cpe_results:
+                            vulns = cve_api.search_cves(c["cpe"])
+                            if vulns:
+                                device["cpes"].append({"cpe": c["cpe"], "source": c["source"]})
+                                for v in vulns:
+                                    v["source"] = c["source"]
+                                    # Remove any cpe field from v if present
+                                    if "cpe" in v:
+                                        del v["cpe"]
+                                    device["vulnerabilities"].append(v)
+                        print(f"[DEBUG] Found {len(device['cpes'])} CPEs and {len(device['vulnerabilities'])} vulnerabilities for {ip}", flush=True)
                     except Exception as e:
-                        print(f"Error analyzing vulnerabilities for {ip}: {e}")
-                        print(traceback.format_exc())
+                        print(f"[ERROR] Error analyzing device {ip}: {e}", flush=True)
+                        print(traceback.format_exc(), flush=True)
+                        device["cpes"] = []
                         device["vulnerabilities"] = []
                     devices.append(device)
                 return self._reply(200, devices)
@@ -123,16 +152,16 @@ class MyHandler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     try:
-        setup_logging()
         print("Starting server on port 8000...")
         print(f"Current working directory: {os.getcwd()}")
         print(f"Python executable: {sys.executable}")
         print(f"Python version: {sys.version}")
-
-        server = HTTPServer(("", 8000), MyHandler)
+        server = HTTPServer(('0.0.0.0', 8000), MyHandler)
         print("Server initialized successfully")
         server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nShutting down server...")
+        server.server_close()
     except Exception as e:
-        print(f"Failed to start server: {e}")
-        print(traceback.format_exc())
-        input("Press Enter to exit...")  # Keep window open if there's an error
+        print(f"Error starting server: {e}")
+        sys.exit(1)

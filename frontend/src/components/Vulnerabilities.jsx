@@ -23,17 +23,15 @@ const Vulnerabilities = () => {
     </article>
   );
 
-  const renderCPEGroup = (group) => (
-    <li key={group.cpe} className="cpe-group">
-      <header className="cpe-header">
-        <h3>{group.cpe_title}</h3>
-        <span className="cpe-id">{group.cpe}</span>
+  // Group by source
+  const renderServiceGroup = (group) => (
+    <li key={group.source} className="service-group">
+      <header className="service-header">
+        <h3>{group.source.toUpperCase()}</h3>
       </header>
-      {group.cves && group.cves.length > 0 && (
-        <ul>
-          {group.cves.map(renderCVE)}
-        </ul>
-      )}
+      <ul>
+        {group.vulnerabilities.map(renderCVE)}
+      </ul>
     </li>
   );
 
@@ -41,15 +39,27 @@ const Vulnerabilities = () => {
     <section className="vulnerabilities-section">
       <h2>Device Vulnerabilities</h2>
       {selectedDevice ? (
-        <ul className="vulnerabilities-list">
-          {selectedDevice.vulnerabilities && selectedDevice.vulnerabilities.length > 0 ? (
-            selectedDevice.vulnerabilities.map(renderCPEGroup)
-          ) : (
-            <li className="no-vulnerabilities">
-              No vulnerabilities detected for {selectedDevice.name || selectedDevice.ip}
-            </li>
-          )}
-        </ul>
+        <>
+          {/* Vulnerabilities Section ONLY */}
+          <ul className="vulnerabilities-list">
+            {selectedDevice.vulnerabilities && selectedDevice.vulnerabilities.length > 0 ? (
+              Object.entries(
+                selectedDevice.vulnerabilities.reduce((acc, vuln) => {
+                  const source = vuln.source || 'unknown';
+                  if (!acc[source]) {
+                    acc[source] = { source, vulnerabilities: [] };
+                  }
+                  acc[source].vulnerabilities.push(vuln);
+                  return acc;
+                }, {})
+              ).map(([_, group]) => renderServiceGroup(group))
+            ) : (
+              <li className="no-vulnerabilities">
+                No vulnerabilities detected for {selectedDevice.name || selectedDevice.ip}
+              </li>
+            )}
+          </ul>
+        </>
       ) : (
         <div className="no-device-selected">
           Select a device to view its vulnerabilities

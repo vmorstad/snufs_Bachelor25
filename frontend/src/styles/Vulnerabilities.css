@@ -65,4 +65,43 @@
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.cpe-section {
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.cpe-section h3 {
+    color: #495057;
+    margin-bottom: 1rem;
+}
+
+.cpe-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.cpe-item {
+    background-color: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.cpe-item p {
+    margin: 0.5rem 0;
+}
+
+.cpe-item strong {
+    color: #495057;
+}
+
+.no-cpes {
+    color: #6c757d;
+    font-style: italic;
 } 

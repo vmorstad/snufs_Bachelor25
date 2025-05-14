@@ -6,17 +6,15 @@ import '../styles/Visualization.css';
 const severities = ['Unknown', 'Low', 'Medium', 'High', 'Critical'];
 
 function getSeverityCounts(data) {
-  // data: array of CPE groups, each with a cves array
+  // data: array of vulnerability objects
   const counts = { Critical: 0, High: 0, Medium: 0, Low: 0, Unknown: 0 };
-  data.forEach(group => {
-    (group.cves || []).forEach(cve => {
-      const sev = (cve.severity || 'Unknown').toLowerCase();
-      if (sev === 'critical') counts.Critical++;
-      else if (sev === 'high') counts.High++;
-      else if (sev === 'medium') counts.Medium++;
-      else if (sev === 'low') counts.Low++;
-      else counts.Unknown++;
-    });
+  data.forEach(vuln => {
+    const sev = (vuln.severity || 'Unknown').toLowerCase();
+    if (sev === 'critical') counts.Critical++;
+    else if (sev === 'high') counts.High++;
+    else if (sev === 'medium') counts.Medium++;
+    else if (sev === 'low') counts.Low++;
+    else counts.Unknown++;
   });
   return severities.map(label => ({ label, value: counts[label] }));
 }

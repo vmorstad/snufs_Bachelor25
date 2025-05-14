@@ -6,7 +6,7 @@ const margin = { top: 30, right: 30, bottom: 50, left: 60 };
 const width = 500;
 const height = 300;
 
-const Barchart = ({ data }) => {
+const Barchart = ({ data, type = 'vulnerabilities' }) => {
   const svgRef = useRef();
 
   useEffect(() => {
@@ -51,7 +51,7 @@ const Barchart = ({ data }) => {
       .attr('y', d => y(d.value))
       .attr('width', x.bandwidth())
       .attr('height', d => y(0) - y(d.value))
-      .attr('fill', '#1976d2');
+      .attr('fill', type === 'vulnerabilities' ? '#1976d2' : '#4caf50');
 
     // Value labels
     svg.selectAll('.bar-label')
@@ -84,8 +84,8 @@ const Barchart = ({ data }) => {
       .attr('text-anchor', 'middle')
       .attr('font-size', '1.2rem')
       .attr('font-weight', 600)
-      .text('Vulnerability Bar Chart');
-  }, [data]);
+      .text(type === 'vulnerabilities' ? 'Vulnerability Distribution' : 'CPE Distribution');
+  }, [data, type]);
 
   return (
     <svg ref={svgRef} width={width} height={height} className="barchart-svg" />
