@@ -26,12 +26,17 @@
   margin-bottom: 8px;
 }
 .vulnerability-card {
-  background: none;
-  border-radius: 0;
-  box-shadow: none;
-  margin-bottom: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  margin-bottom: 16px;
   margin-left: 0;
-  border-left: none;
+  border-left: 4px solid #e0e0e0;
+  padding: 16px 20px;
+  transition: box-shadow 0.2s;
+}
+.vulnerability-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
 }
 .vulnerability-header {
   display: flex;
@@ -104,4 +109,20 @@
 .no-cpes {
     color: #6c757d;
     font-style: italic;
+}
+
+.vulnerability-card.low {
+  border-left-color: #16a34a; /* green */
+}
+.vulnerability-card.medium {
+  border-left-color: #fbbf24; /* yellow */
+}
+.vulnerability-card.high {
+  border-left-color: #ef4444; /* red */
+}
+.vulnerability-card.critical {
+  border-left-color: #7f1d1d; /* dark red */
+}
+.vulnerability-card.unknown {
+  border-left-color: #a1a1a1; /* gray */
 } 
