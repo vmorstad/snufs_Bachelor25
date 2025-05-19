@@ -196,7 +196,7 @@ const Heatmap = () => {
       .attr('y', legendY - 6)
       .attr('font-size', '0.9rem')
       .attr('fill', '#333')
-      .text('Severity of CVEs');
+      .text('Number of CVEs');
   }, [serviceLabels, labelLines, rowHeights, rowYs, matrix]);
 
   return (
